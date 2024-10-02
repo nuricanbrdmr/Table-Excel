@@ -27,7 +27,7 @@ Projenizi yerel makinenizde çalıştırmak için şu adımları izleyin:
 
 2. Proje dizinine gidin:
    ```bash
-   cd Table-Excel
+   cd Table-Excel-main
    ```
 
 3. Gerekli bağımlılıkları yükleyin:
