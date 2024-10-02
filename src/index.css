@@ -1,0 +1,10 @@
+.main{
+  padding: 20px;
+  height: 100vh;
+  background-color: #f1f1f1;
+}
+
+/* Sütun başlığı hover stili */
+:where(.css-dev-only-do-not-override-ccdg5a).ant-table-wrapper .ant-table-thead >tr>th:hover{
+    background-color: #f1f1f1;
+}
