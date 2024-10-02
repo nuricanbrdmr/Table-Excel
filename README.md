@@ -1,50 +1,47 @@
-# React + TypeScript + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# Tablo Excel Projesi
 
-Currently, two official plugins are available:
+Bu proje, Ant Design kütüphanesini kullanarak bir tablo oluşturur. Kullanıcılar, tablodaki hücreleri seçebilir, sayfalama özelliklerinden yararlanabilir ve seçili verileri yerel depolama (localStorage) ile kaydedebilir. Proje, kullanıcıların büyük veri setleriyle etkileşimde bulunmasını kolaylaştırmak için geliştirilmiştir.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Özellikler
 
-## Expanding the ESLint configuration
+- **Hücre Seçimi**: Kullanıcılar, hücreleri tıklayarak seçebilir ve seçilen hücreleri görüntüleyebilir.
+- **Sayfalama**: Tablo, sayfalama özelliği ile verileri daha yönetilebilir bir şekilde gösterir.
+- **Yerel Depolama**: Seçilen hücreler ve satırlar, tarayıcı yerel depolamasında saklanır ve sayfa yenilense bile korunur.
+- **Dinamik Veri**: Tablodaki veriler, dinamik olarak güncellenir ve kullanıcı etkileşimlerine yanıt verir.
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+## Gereksinimler
 
-- Configure the top-level `parserOptions` property like this:
+- Node.js (v12 veya daha yeni)
+- React (v16.8 veya daha yeni)
+- Ant Design
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+## Kurulum
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+Projenizi yerel makinenizde çalıştırmak için şu adımları izleyin:
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+1. Bu repoyu klonlayın:
+   ```bash
+   git clone https://github.com/nuricanbrdmr/Table-Excel.git
+   ```
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+2. Proje dizinine gidin:
+   ```bash
+   cd Table-Excel
+   ```
+
+3. Gerekli bağımlılıkları yükleyin:
+   ```bash
+   npm install
+   ```
+
+4. Uygulamayı başlatın:
+   ```bash
+   npm run dev
+   ```
+
+Tarayıcınızda `http://localhost:5173` adresine giderek uygulamayı görüntüleyebilirsiniz.
+
+## Kullanım
+
+Tablonun üstündeki sütun başlıklarına tıklayarak tüm hücreleri seçebilir veya satırları tek tek seçebilirsiniz. Sayfa boyutunu değiştirerek görüntülenen veri sayısını ayarlayabilirsiniz. Seçili veriler, yerel depolama sayesinde sayfa yenilense bile kaydedilecektir.
