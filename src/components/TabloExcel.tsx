@@ -15,18 +15,22 @@ const sutunlar: TableColumnsType<DataTuru> = [
   {
     title: "İsim",
     dataIndex: "isim",
+    width: '25%'
   },
   {
     title: "Yaş",
     dataIndex: "yas",
+    width: '10%'
   },
   {
     title: "Adres",
     dataIndex: "adres",
+    width: '40%'
   },
   {
     title: "Telefon",
     dataIndex: "telefon",
+    width: '20%'
   },
 ];
 
@@ -126,10 +130,6 @@ const TabloExcel: React.FC = () => {
     }
   };
 
-  const hucreSeciliMi = (index: number, sutun: number) => {
-    return secilenHucreler.has(`${index}-${sutun}`);
-  };
-
   const sutunBaslikTiklama = (sutunIndex: number) => {
     const yeniSeciliHucreler = new Map(secilenHucreler);
     const tumSecilenler = TumData.every((_, satirIndex) =>
@@ -152,6 +152,9 @@ const TabloExcel: React.FC = () => {
     setSecilenHucreler(yeniSeciliHucreler);
   };
   
+  const hucreSeciliMi = (index: number, sutun: number) => {
+    return secilenHucreler.has(`${index}-${sutun}`);
+  };
 
   const tabloSutunlari = sutunlar.map((sutun, sutunIndex) => ({
     ...sutun,
@@ -162,13 +165,13 @@ const TabloExcel: React.FC = () => {
       },
     }),
     onCell: (_: any, satirIndex?: number) => {
-      const mutlakIndex = (gecerliSayfa - 1) * sayfaBoyutu + (satirIndex || 0);
+      const mutlakSatirIndex = (gecerliSayfa - 1) * sayfaBoyutu + (satirIndex || 0);
       return {
-        onMouseDown: () => hucreMouseDown(mutlakIndex, sutunIndex),
-        onMouseOver: () => hucreMouseOver(mutlakIndex, sutunIndex),
+        onMouseDown: () => hucreMouseDown(mutlakSatirIndex, sutunIndex),
+        onMouseOver: () => hucreMouseOver(mutlakSatirIndex, sutunIndex),
         onMouseUp: hucreMouseUp,
         style: {
-          backgroundColor: hucreSeciliMi(mutlakIndex, sutunIndex)
+          backgroundColor: hucreSeciliMi(mutlakSatirIndex, sutunIndex)
             ? "lightblue"
             : "",
           cursor: "pointer",
