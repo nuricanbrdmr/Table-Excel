@@ -52,13 +52,12 @@ const TabloExcel: React.FC = () => {
   const [seciliSatirAnahtarlari, setSeciliSatirAnahtarlari] = useState<React.Key[]>([]);
   const [seciliSatirData, setSeciliSatirData] = useState<DataTuru[]>([]);
 
-  // Mevcut sayfanın verilerini hesapla
+  // Mevcut sayfanın verileri
   const kaynakData = useMemo(() => {
     const baslangicIndex = (gecerliSayfa - 1) * sayfaBoyutu;
     return TumData.slice(baslangicIndex, baslangicIndex + sayfaBoyutu);
   }, [gecerliSayfa, sayfaBoyutu]);
 
-  // Seçili hücreler ve satırları localStorage'dan yükle
   useEffect(() => {
     const secilenHucrelerStorage = localStorage.getItem("secilenHucreler");
     const seciliSatirlarStorage = localStorage.getItem("seciliSatirlar");
@@ -73,7 +72,6 @@ const TabloExcel: React.FC = () => {
     }
   }, []);
 
-  // Seçilen verileri localStorage'a kaydet
   useEffect(() => {
     if (secilenHucreler.size > 0) {
       localStorage.setItem(
