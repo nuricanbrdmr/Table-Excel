@@ -159,18 +159,19 @@ const TabloExcel: React.FC<ColumnType> = () => {
   };
 
   const hucreSeciminidegistir = (veri: DataTuru, sutunKey: keyof DataTuru) => {
-    const hucreKey = `${veri[sutunKey]}-${sutunKey}`;
+    const hucreKey = `${veri.key}-${sutunKey}`;
     setState((prevState) => {
       const yeniSet = new Set(prevState.secilenHucreler);
-        yeniSet.has(hucreKey)
-          ? yeniSet.delete(hucreKey)
-          : yeniSet.add(hucreKey);
+      yeniSet.has(hucreKey)
+        ? yeniSet.delete(hucreKey)
+        : yeniSet.add(hucreKey);
       return {
         ...prevState,
         secilenHucreler: yeniSet,
       };
     });
   };
+
 
   const aralikSecimiYap = (
     baslangic: { satir: number; sutun: number },
@@ -187,9 +188,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
       for (let sutun = minSutun; sutun <= maxSutun; sutun++) {
         const veri = tumData[satir];
         const sutunKey = sutunlar[sutun].dataIndex;
-        const hucreKey = `${veri[
-          sutunKey as keyof DataTuru
-        ].toString()}-${sutunKey}`;
+        const hucreKey = `${veri.key}-${sutunKey}`;
         yeniSecimler.add(hucreKey);
       }
     }
@@ -197,7 +196,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
   };
 
   const hucreSeciliMi = (veri: DataTuru, sutunKey: keyof DataTuru) => {
-    return state.secilenHucreler.has(`${veri[sutunKey]}-${sutunKey}`);
+    return state.secilenHucreler.has(`${veri.key}-${sutunKey}`);
   };
 
   const kopyala = () => {
@@ -206,7 +205,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
       sutunlar.forEach((sutun, sutunIndex) => {
         const sutunKey = sutun.dataIndex as keyof DataTuru;
         const hucreDegeri = veri[sutunKey].toString();
-        const hucreKey = `${hucreDegeri}-${sutunKey}`;
+        const hucreKey = `${veri.key}-${sutunKey}`;
         if (
           state.secilenHucreler.has(hucreKey) ||
           state.seciliSatirAnahtarlari.includes(veri.key)
@@ -228,11 +227,11 @@ const TabloExcel: React.FC<ColumnType> = () => {
   const sutunBaslikTiklama = (sutunKey: keyof DataTuru) => {
     const yeniSeciliHucreler = new Set(state.secilenHucreler);
     const tumSecilenler = tumData.every((veri) =>
-      yeniSeciliHucreler.has(`${veri[sutunKey]}-${sutunKey}`)
+      yeniSeciliHucreler.has(`${veri.key}-${sutunKey}`)
     );
 
     tumData.forEach((veri) => {
-      const hucreKey = `${veri[sutunKey]}-${sutunKey}`;
+      const hucreKey = `${veri.key}-${sutunKey}`;
       tumSecilenler
         ? yeniSeciliHucreler.delete(hucreKey)
         : yeniSeciliHucreler.add(hucreKey);
@@ -287,7 +286,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
   return (
     <>
       <Table<DataTuru>
-        title={() => <h2>Table Excel</h2>}
+        title={() => <h2>Table Excel 4</h2>}
         columns={tabloSutunlari}
         rowSelection={satirSecimi}
         dataSource={kaynakData}
