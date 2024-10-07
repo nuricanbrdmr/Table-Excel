@@ -69,7 +69,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
   }, [state.secilenHucreler, state.seciliSatirAnahtarlari]);
 
   useEffect(() => {
-    if (state.secilenHucreler.size > 0 || state.seciliSatirData.length >= 0) {
+    if (state.secilenHucreler.size > 0 || state.seciliSatirData.length > 0) {
       localStorage.setItem(
         "tabloVerileri",
         JSON.stringify({
