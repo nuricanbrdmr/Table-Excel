@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Table } from "antd";
-import type { TableColumnsType } from "antd";
-import { ColumnType, TableRowSelection } from "antd/es/table/interface";
+import type { ColumnType } from "antd/es/table";
+import { TableRowSelection } from "antd/es/table/interface";
 
 interface DataTuru {
   key: React.Key;
@@ -11,205 +11,299 @@ interface DataTuru {
   telefon: string;
 }
 
-const sutunlar: TableColumnsType<DataTuru> = [
-  {
-    title: "İsim",
-    dataIndex: "isim",
-    width: '25%'
-  },
-  {
-    title: "Yaş",
-    dataIndex: "yas",
-    width: '10%'
-  },
-  {
-    title: "Adres",
-    dataIndex: "adres",
-    width: '40%'
-  },
-  {
-    title: "Telefon",
-    dataIndex: "telefon",
-    width: '20%'
-  },
+const sutunlar: ColumnType<DataTuru>[] = [
+  { title: "İsim", dataIndex: "isim", key: "isim", width: "25%" },
+  { title: "Yaş", dataIndex: "yas", key: "yas", width: "10%" },
+  { title: "Adres", dataIndex: "adres", key: "adres", width: "40%" },
+  { title: "Telefon", dataIndex: "telefon", key: "telefon", width: "20%" },
 ];
 
-const TumData: DataTuru[] = Array.from({ length: 50 }).map((_, i) => ({
+const tumData: DataTuru[] = Array.from({ length: 50 }, (_, i) => ({
   key: i,
   isim: `Nuri Can Birdemir ${i + 1}`,
-  yas: 10 + i,
+  yas: 11 + i,
   adres: `Hadımköy, Baykar Özdemir Bayraktar Merkezi . ${i + 1}`,
   telefon: `0512 345 789${(i + 1) % 10}`,
-}));
+})).sort(() => Math.random() - 0.5);
 
-const TabloExcel: React.FC = () => {
-  const [secilenHucreler, setSecilenHucreler] = useState<Map<string, string>>(new Map());
-  const [gecerliSayfa, setGecerliSayfa] = useState(1);
-  const [sayfaBoyutu, setSayfaBoyutu] = useState(10);
-  const [seciliyorMu, setSeciliyorMu] = useState(false);
-  const [baslangicHucresi, setBaslangicHucresi] = useState<{ satir: number; sutun: number } | null>(null);
-  const [yukleniyor, setYukleniyor] = useState(false);
-  const [seciliSatirAnahtarlari, setSeciliSatirAnahtarlari] = useState<React.Key[]>([]);
-  const [seciliSatirData, setSeciliSatirData] = useState<DataTuru[]>([]);
+const TabloExcel: React.FC<ColumnType> = () => {
+  const [state, setState] = useState({
+    secilenHucreler: new Set(),
+    gecerliSayfa: 1,
+    sayfaBoyutu: 10,
+    seciliyorMu: false,
+    baslangicHucresi: null as { satir: number; sutun: number } | null,
+    shiftBasiliMi: false,
+    yukleniyor: false,
+    seciliSatirAnahtarlari: [] as React.Key[],
+    seciliSatirData: [] as DataTuru[],
+  });
 
-  // Mevcut sayfanın verileri
+  const updateState = useCallback((newState: Partial<typeof state>) => {
+    setState((prevState) => ({ ...prevState, ...newState }));
+  }, []);
+
   const kaynakData = useMemo(() => {
-    const baslangicIndex = (gecerliSayfa - 1) * sayfaBoyutu;
-    return TumData.slice(baslangicIndex, baslangicIndex + sayfaBoyutu);
-  }, [gecerliSayfa, sayfaBoyutu]);
+    const baslangicIndex = (state.gecerliSayfa - 1) * state.sayfaBoyutu;
+    return tumData.slice(
+      baslangicIndex,
+      baslangicIndex + state.sayfaBoyutu
+    );
+  }, [state.gecerliSayfa, state.sayfaBoyutu, tumData]);
 
   useEffect(() => {
-    const secilenHucrelerStorage = localStorage.getItem("secilenHucreler");
-    const seciliSatirlarStorage = localStorage.getItem("seciliSatirlar");
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Shift") updateState({ shiftBasiliMi: true });
+      if (event.ctrlKey && event.key === "c") kopyala();
+    };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "Shift") updateState({ shiftBasiliMi: false });
+    };
 
-    if (secilenHucrelerStorage) {
-      setSecilenHucreler(new Map(JSON.parse(secilenHucrelerStorage)));
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [state.secilenHucreler, state.seciliSatirAnahtarlari]);
+
+  useEffect(() => {
+    if (state.secilenHucreler.size > 0 || state.seciliSatirData.length > 0) {
+      localStorage.setItem(
+        "tabloVerileri",
+        JSON.stringify({
+          secilenHucreler: Array.from(state.secilenHucreler),
+          seciliSatirlar: state.seciliSatirData,
+          gecerliSayfa: state.gecerliSayfa,
+          sayfaBoyutu: state.sayfaBoyutu,
+        })
+      );
     }
-    if (seciliSatirlarStorage) {
-      const varOlanSatirData = JSON.parse(seciliSatirlarStorage);
-      setSeciliSatirData(varOlanSatirData);
-      setSeciliSatirAnahtarlari(varOlanSatirData.map((item: DataTuru) => item.key));
+  }, [
+    state.secilenHucreler,
+    state.seciliSatirData,
+    state.gecerliSayfa,
+    state.sayfaBoyutu,
+  ]);
+
+  useEffect(() => {
+    const kayitliVeriler = localStorage.getItem("tabloVerileri");
+    if (kayitliVeriler) {
+      const {
+        secilenHucreler,
+        seciliSatirlar,
+        gecerliSayfa: kayitliSayfa,
+        sayfaBoyutu: kayitliBoyut,
+      } = JSON.parse(kayitliVeriler);
+      updateState({
+        secilenHucreler: new Set(secilenHucreler),
+        seciliSatirData: seciliSatirlar,
+        seciliSatirAnahtarlari: seciliSatirlar.map(
+          (item: DataTuru) => item.key
+        ),
+        gecerliSayfa: kayitliSayfa,
+        sayfaBoyutu: kayitliBoyut,
+      });
     }
   }, []);
 
-  useEffect(() => {
-    if (secilenHucreler.size > 0) {
-      localStorage.setItem(
-        "secilenHucreler",
-        JSON.stringify(Array.from(secilenHucreler.entries()))
+  const sayfalandirmaDegisikligi = useCallback(
+    (sayfa: number, boyut?: number) => {
+      updateState({
+        yukleniyor: true,
+        gecerliSayfa: sayfa,
+        sayfaBoyutu: boyut || state.sayfaBoyutu,
+      });
+      setTimeout(() => updateState({ yukleniyor: false }), 500);
+    },
+    [state.sayfaBoyutu]
+  );
+
+  const hucreMouseDown = (veri: DataTuru, sutunKey: keyof DataTuru) => {
+    if (!state.shiftBasiliMi) {
+      setState((prevState) => ({ ...prevState, secilenHucreler: new Set() }));
+    }
+    setState((prevState) => ({
+      ...prevState,
+      seciliyorMu: true,
+      baslangicHucresi: {
+        satir: tumData.findIndex((item) => item.key === veri.key),
+        sutun: sutunlar.findIndex((col) => col.dataIndex === sutunKey),
+      },
+    }));
+    hucreSeciminidegistir(veri, sutunKey);
+  };
+
+  const hucreMouseOver = (veri: DataTuru, sutunKey: keyof DataTuru) => {
+    if (state.seciliyorMu && state.baslangicHucresi) {
+      const bitisSatir = tumData.findIndex(
+        (item) => item.key === veri.key
       );
-    }
-    if (seciliSatirData.length > 0) {
-      localStorage.setItem("seciliSatirlar", JSON.stringify(seciliSatirData));
-    }
-  }, [secilenHucreler, seciliSatirData]);
-
-  const sayfalandirmaDegisikligi = (sayfa: number, boyut?: number) => {
-    setYukleniyor(true);
-    setGecerliSayfa(sayfa);
-    if (boyut) setSayfaBoyutu(boyut);
-    setTimeout(() => setYukleniyor(false), 500);
-  };
-
-  const hucreMouseDown = (satir: number, sutun: number) => {
-    setSeciliyorMu(true);
-    setBaslangicHucresi({ satir, sutun });
-    hucreSeciminidegistir(satir, sutun);
-  };
-
-  const hucreMouseOver = (satir: number, sutun: number) => {
-    if (seciliyorMu && baslangicHucresi) {
-      hucreSeciminidegistir(satir, sutun);
-    }
-  };
-
-  const hucreMouseUp = () => {
-    setSeciliyorMu(false);
-    setBaslangicHucresi(null);
-  };
-
-  const hucreSeciminidegistir = (satir: number, sutun: number) => {
-    const hucreKey = `${satir}-${sutun}`;
-    const sutunData = sutunlar[sutun] as ColumnType<DataTuru>;
-    const sutunKey = sutunData.dataIndex as keyof DataTuru;
-    const satirData = TumData[satir];
-
-    if (satirData) {
-      const hucreDeger = satirData[sutunKey];
-      setSecilenHucreler((prev) => {
-        const yeniEsleme = new Map(prev);
-        if (yeniEsleme.has(hucreKey)) {
-          yeniEsleme.delete(hucreKey);
-        } else {
-          yeniEsleme.set(hucreKey, `${hucreDeger}`);
-        }
-        return yeniEsleme;
+      const bitisSutun = sutunlar.findIndex(
+        (col) => col.dataIndex === sutunKey
+      );
+      aralikSecimiYap(state.baslangicHucresi, {
+        satir: bitisSatir,
+        sutun: bitisSutun,
       });
     }
   };
 
-  const sutunBaslikTiklama = (sutunIndex: number) => {
-    const yeniSeciliHucreler = new Map(secilenHucreler);
-    const tumSecilenler = TumData.every((_, satirIndex) =>
-      yeniSeciliHucreler.has(`${satirIndex}-${sutunIndex}`)
-    );
-  
-    TumData.forEach((satirData, satirIndex) => {
-      const hucreKey = `${satirIndex}-${sutunIndex}`;
-      const sutun = sutunlar[sutunIndex] as ColumnType<DataTuru>;
-      const sutunKey = sutun.dataIndex as keyof DataTuru;
-      const hucreDegeri = satirData[sutunKey];
-  
-      if (tumSecilenler) {
-        yeniSeciliHucreler.delete(hucreKey);
-      } else {
-        yeniSeciliHucreler.set(hucreKey, `${hucreDegeri}`);
-      }
-    });
-  
-    setSecilenHucreler(yeniSeciliHucreler);
-  };
-  
-  const hucreSeciliMi = (index: number, sutun: number) => {
-    return secilenHucreler.has(`${index}-${sutun}`);
+  const hucreMouseUp = () => {
+    setState((prevState) => ({
+      ...prevState,
+      seciliyorMu: false,
+      baslangicHucresi: null,
+    }));
   };
 
-  const tabloSutunlari = sutunlar.map((sutun, sutunIndex) => ({
+  const hucreSeciminidegistir = (veri: DataTuru, sutunKey: keyof DataTuru) => {
+    const hucreKey = `${veri[sutunKey]}-${sutunKey}`;
+    setState((prevState) => {
+      const yeniSet = new Set(prevState.secilenHucreler);
+        yeniSet.has(hucreKey)
+          ? yeniSet.delete(hucreKey)
+          : yeniSet.add(hucreKey);
+      return {
+        ...prevState,
+        secilenHucreler: yeniSet,
+      };
+    });
+  };
+
+  const aralikSecimiYap = (
+    baslangic: { satir: number; sutun: number },
+    bitis: { satir: number; sutun: number }
+  ) => {
+    const minSatir = Math.min(baslangic.satir, bitis.satir);
+    const maxSatir = Math.max(baslangic.satir, bitis.satir);
+    const minSutun = Math.min(baslangic.sutun, bitis.sutun);
+    const maxSutun = Math.max(baslangic.sutun, bitis.sutun);
+
+    const yeniSecimler = new Set(state.secilenHucreler);
+
+    for (let satir = minSatir; satir <= maxSatir; satir++) {
+      for (let sutun = minSutun; sutun <= maxSutun; sutun++) {
+        const veri = tumData[satir];
+        const sutunKey = sutunlar[sutun].dataIndex;
+        const hucreKey = `${veri[
+          sutunKey as keyof DataTuru
+        ].toString()}-${sutunKey}`;
+        yeniSecimler.add(hucreKey);
+      }
+    }
+    updateState({ secilenHucreler: yeniSecimler });
+  };
+
+  const hucreSeciliMi = (veri: DataTuru, sutunKey: keyof DataTuru) => {
+    return state.secilenHucreler.has(`${veri[sutunKey]}-${sutunKey}`);
+  };
+
+  const kopyala = () => {
+    const satirSutunGruplari: { [satir: number]: string[] } = {};
+    tumData.forEach((veri, satirIndex) => {
+      sutunlar.forEach((sutun, sutunIndex) => {
+        const sutunKey = sutun.dataIndex as keyof DataTuru;
+        const hucreDegeri = veri[sutunKey].toString();
+        const hucreKey = `${hucreDegeri}-${sutunKey}`;
+        if (
+          state.secilenHucreler.has(hucreKey) ||
+          state.seciliSatirAnahtarlari.includes(veri.key)
+        ) {
+          if (!satirSutunGruplari[satirIndex])
+            satirSutunGruplari[satirIndex] = [];
+          satirSutunGruplari[satirIndex][sutunIndex] = hucreDegeri;
+        }
+      });
+    });
+    const tabloMetni = Object.values(satirSutunGruplari)
+      .map((satir) => satir.join("\t"))
+      .join("\n");
+    navigator.clipboard
+      .writeText(tabloMetni)
+      .then(() => alert("Veriler kopyalandı!"));
+  };
+
+  const sutunBaslikTiklama = (sutunKey: keyof DataTuru) => {
+    const yeniSeciliHucreler = new Set(state.secilenHucreler);
+    const tumSecilenler = tumData.every((veri) =>
+      yeniSeciliHucreler.has(`${veri[sutunKey]}-${sutunKey}`)
+    );
+
+    tumData.forEach((veri) => {
+      const hucreKey = `${veri[sutunKey]}-${sutunKey}`;
+      tumSecilenler
+        ? yeniSeciliHucreler.delete(hucreKey)
+        : yeniSeciliHucreler.add(hucreKey);
+    });
+    updateState({ secilenHucreler: yeniSeciliHucreler });
+  };
+
+  const tabloSutunlari: ColumnType<DataTuru>[] = sutunlar.map((sutun) => ({
     ...sutun,
     onHeaderCell: () => ({
-      onClick: () => sutunBaslikTiklama(sutunIndex),
+      onClick: () => sutunBaslikTiklama(sutun.dataIndex as keyof DataTuru),
       style: {
         cursor: "pointer",
       },
     }),
-    onCell: (_: any, satirIndex?: number) => {
-      const mutlakSatirIndex = (gecerliSayfa - 1) * sayfaBoyutu + (satirIndex || 0);
-      return {
-        onMouseDown: () => hucreMouseDown(mutlakSatirIndex, sutunIndex),
-        onMouseOver: () => hucreMouseOver(mutlakSatirIndex, sutunIndex),
-        onMouseUp: hucreMouseUp,
-        style: {
-          backgroundColor: hucreSeciliMi(mutlakSatirIndex, sutunIndex)
-            ? "lightblue"
-            : "",
-          cursor: "pointer",
-        },
-      };
-    },
+    onCell: (record: DataTuru) => ({
+      onMouseDown: () =>
+        hucreMouseDown(record, sutun.dataIndex as keyof DataTuru),
+      onMouseOver: () =>
+        hucreMouseOver(record, sutun.dataIndex as keyof DataTuru),
+      onMouseUp: hucreMouseUp,
+      style: {
+        backgroundColor: hucreSeciliMi(
+          record,
+          sutun.dataIndex as keyof DataTuru
+        )
+          ? "lightblue"
+          : "",
+        cursor: "pointer",
+      },
+    }),
   }));
 
   const seciliSatirDegisikligi = (_: any, yeniSeciliSatirlar: DataTuru[]) => {
     const guncelSeciliSatirlar = [
-      ...seciliSatirData.filter(satir => !kaynakData.some(d => d.key === satir.key)),
-      ...yeniSeciliSatirlar
+      ...state.seciliSatirData.filter(
+        (satir) => !kaynakData.some((d) => d.key === satir.key)
+      ),
+      ...yeniSeciliSatirlar,
     ];
-    
-    setSeciliSatirAnahtarlari(guncelSeciliSatirlar.map(satir => satir.key));
-    setSeciliSatirData(guncelSeciliSatirlar);
+    updateState({
+      seciliSatirAnahtarlari: guncelSeciliSatirlar.map((satir) => satir.key),
+      seciliSatirData: guncelSeciliSatirlar,
+    });
   };
 
   const satirSecimi: TableRowSelection<DataTuru> = {
-    selectedRowKeys: seciliSatirAnahtarlari,
+    selectedRowKeys: state.seciliSatirAnahtarlari,
     onChange: seciliSatirDegisikligi,
   };
 
   return (
-    <Table<DataTuru>
-      columns={tabloSutunlari}
-      dataSource={kaynakData}
-      rowSelection={satirSecimi}
-      bordered
-      loading={yukleniyor}
-      pagination={{
-        pageSize: sayfaBoyutu,
-        onChange: sayfalandirmaDegisikligi,
-        current: gecerliSayfa,
-        total: TumData.length,
-        showSizeChanger: true,
-      }}
-      style={{ userSelect: "none" }}
-    />
+    <>
+      <Table<DataTuru>
+        title={() => <h2>Table Excel</h2>}
+        columns={tabloSutunlari}
+        rowSelection={satirSecimi}
+        dataSource={kaynakData}
+        bordered
+        loading={state.yukleniyor}
+        pagination={{
+          pageSize: state.sayfaBoyutu,
+          onChange: sayfalandirmaDegisikligi,
+          current: state.gecerliSayfa,
+          total: tumData.length,
+          showSizeChanger: true,
+        }}
+        style={{ userSelect: "none" }}
+      />
+    </>
   );
 };
 
-export default TabloExcel
+export default TabloExcel;
