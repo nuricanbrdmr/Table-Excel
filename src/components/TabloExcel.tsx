@@ -69,7 +69,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
   }, [state.secilenHucreler, state.seciliSatirAnahtarlari]);
 
   useEffect(() => {
-    if (state.secilenHucreler.size > 0 || state.seciliSatirData.length > 0) {
+    if (state.secilenHucreler.size > 0 || state.seciliSatirData.length >= 0) {
       localStorage.setItem(
         "tabloVerileri",
         JSON.stringify({
@@ -286,7 +286,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
   return (
     <>
       <Table<DataTuru>
-        title={() => <h2>Table Excel 4</h2>}
+        title={() => <h2>Table Excel</h2>}
         columns={tabloSutunlari}
         rowSelection={satirSecimi}
         dataSource={kaynakData}
