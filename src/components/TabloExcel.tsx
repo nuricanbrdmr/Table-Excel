@@ -39,8 +39,8 @@ const TabloExcel: React.FC<ColumnType> = () => {
     seciliSatirData: [] as DataTuru[],
   });
 
-  const updateState = useCallback((newState: Partial<typeof state>) => {
-    setState((prevState) => ({ ...prevState, ...newState }));
+  const stateGuncelle = useCallback((yeniState: Partial<typeof state>) => {
+    setState((prevState) => ({ ...prevState, ...yeniState }));
   }, []);
 
   const kaynakData = useMemo(() => {
@@ -53,11 +53,11 @@ const TabloExcel: React.FC<ColumnType> = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Shift") updateState({ shiftBasiliMi: true });
+      if (event.key === "Shift") stateGuncelle({ shiftBasiliMi: true });
       if (event.ctrlKey && event.key === "c") kopyala();
     };
     const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.key === "Shift") updateState({ shiftBasiliMi: false });
+      if (event.key === "Shift") stateGuncelle({ shiftBasiliMi: false });
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -96,7 +96,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
         gecerliSayfa: kayitliSayfa,
         sayfaBoyutu: kayitliBoyut,
       } = JSON.parse(kayitliVeriler);
-      updateState({
+      stateGuncelle({
         secilenHucreler: new Set(secilenHucreler),
         seciliSatirData: seciliSatirlar,
         seciliSatirAnahtarlari: seciliSatirlar.map(
@@ -110,28 +110,27 @@ const TabloExcel: React.FC<ColumnType> = () => {
 
   const sayfalandirmaDegisikligi = useCallback(
     (sayfa: number, boyut?: number) => {
-      updateState({
+      stateGuncelle({
         yukleniyor: true,
         gecerliSayfa: sayfa,
         sayfaBoyutu: boyut || state.sayfaBoyutu,
       });
-      setTimeout(() => updateState({ yukleniyor: false }), 500);
+      setTimeout(() => stateGuncelle({ yukleniyor: false }), 500);
     },
     [state.sayfaBoyutu]
   );
 
   const hucreMouseDown = (veri: DataTuru, sutunKey: keyof DataTuru) => {
     if (!state.shiftBasiliMi) {
-      setState((prevState) => ({ ...prevState, secilenHucreler: new Set() }));
+      stateGuncelle({  secilenHucreler: new Set() });
     }
-    setState((prevState) => ({
-      ...prevState,
+    stateGuncelle({   
       seciliyorMu: true,
       baslangicHucresi: {
         satir: tumData.findIndex((item) => item.key === veri.key),
-        sutun: sutunlar.findIndex((col) => col.dataIndex === sutunKey),
-      },
-    }));
+        sutun: sutunlar.findIndex((sutun) => sutun.dataIndex === sutunKey),
+      },});
+
     hucreSeciminidegistir(veri, sutunKey);
   };
 
@@ -141,7 +140,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
         (item) => item.key === veri.key
       );
       const bitisSutun = sutunlar.findIndex(
-        (col) => col.dataIndex === sutunKey
+        (sutun) => sutun.dataIndex === sutunKey
       );
       aralikSecimiYap(state.baslangicHucresi, {
         satir: bitisSatir,
@@ -151,11 +150,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
   };
 
   const hucreMouseUp = () => {
-    setState((prevState) => ({
-      ...prevState,
-      seciliyorMu: false,
-      baslangicHucresi: null,
-    }));
+    stateGuncelle({  seciliyorMu: false, baslangicHucresi: null, });
   };
 
   const hucreSeciminidegistir = (veri: DataTuru, sutunKey: keyof DataTuru) => {
@@ -192,7 +187,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
         yeniSecimler.add(hucreKey);
       }
     }
-    updateState({ secilenHucreler: yeniSecimler });
+    stateGuncelle({ secilenHucreler: yeniSecimler });
   };
 
   const hucreSeciliMi = (veri: DataTuru, sutunKey: keyof DataTuru) => {
@@ -236,7 +231,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
         ? yeniSeciliHucreler.delete(hucreKey)
         : yeniSeciliHucreler.add(hucreKey);
     });
-    updateState({ secilenHucreler: yeniSeciliHucreler });
+    stateGuncelle({ secilenHucreler: yeniSeciliHucreler });
   };
 
   const tabloSutunlari: ColumnType<DataTuru>[] = sutunlar.map((sutun) => ({
@@ -247,15 +242,15 @@ const TabloExcel: React.FC<ColumnType> = () => {
         cursor: "pointer",
       },
     }),
-    onCell: (record: DataTuru) => ({
+    onCell: (veri: DataTuru) => ({
       onMouseDown: () =>
-        hucreMouseDown(record, sutun.dataIndex as keyof DataTuru),
+        hucreMouseDown(veri, sutun.dataIndex as keyof DataTuru),
       onMouseOver: () =>
-        hucreMouseOver(record, sutun.dataIndex as keyof DataTuru),
+        hucreMouseOver(veri, sutun.dataIndex as keyof DataTuru),
       onMouseUp: hucreMouseUp,
       style: {
         backgroundColor: hucreSeciliMi(
-          record,
+          veri,
           sutun.dataIndex as keyof DataTuru
         )
           ? "lightblue"
@@ -272,7 +267,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
       ),
       ...yeniSeciliSatirlar,
     ];
-    updateState({
+    stateGuncelle({
       seciliSatirAnahtarlari: guncelSeciliSatirlar.map((satir) => satir.key),
       seciliSatirData: guncelSeciliSatirlar,
     });
