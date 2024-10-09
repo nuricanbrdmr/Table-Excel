@@ -8,3 +8,9 @@
 :where(.css-dev-only-do-not-override-ccdg5a).ant-table-wrapper .ant-table-thead >tr>th:hover{
     background-color: #f1f1f1;
 }
+
+*,
+*:focus,
+*:focus-visible {
+  outline: none !important;
+}
