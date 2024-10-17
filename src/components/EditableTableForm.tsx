@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Button, Input, message } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, UndoOutlined } from '@ant-design/icons';
 
 interface DataType {
   key: string;
@@ -18,22 +18,41 @@ interface CellPosition {
 export default function EditableTableForm() {
   const [data, setData] = useState<DataType[]>([]);
   const [selectedCells, setSelectedCells] = useState<CellPosition[]>([]);
+  const [history, setHistory] = useState<DataType[][]>([]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        handleUndo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [history]);
+
+  const saveToHistory = (newData: DataType[]) => {
+    setHistory(prev => [...prev, data]);
+    setData(newData);
+  };
 
   const handleSave = (row: DataType) => {
-    setData(data.map(item => (item.key === row.key ? { ...item, ...row } : item)));
+    const newData = data.map(item => (item.key === row.key ? { ...item, ...row } : item));
+    saveToHistory(newData);
   };
 
   const handleDelete = (key: string) => {
-    setData(prevData => prevData.filter(item => item.key !== key));
+    const newData = data.filter(item => item.key !== key);
+    saveToHistory(newData);
   };
 
   const handleAdd = () => {
     const newRow: DataType = { key: Date.now().toString(), name: '', age: '', address: '', number: '' };
-    setData(prevData => [...prevData, newRow]);
+    saveToHistory([...data, newRow]);
   };
 
   const handleClear = () => {
-    setData([]); // Tüm veriyi temizle
+    saveToHistory([]);
     message.success('Tüm veriler temizlendi!');
   };
 
@@ -42,15 +61,26 @@ export default function EditableTableForm() {
     const pastedData = e.clipboardData.getData('text').split('\n').filter(row => row);
     if (!pastedData.length || !selectedCells.length) return;
   
-    const newData = [...data];
+    let newData = [...data];
     const { rowKey, columnIndex: startCol } = selectedCells[0];
-    const startRow = newData.findIndex(item => item.key === rowKey);
+    let startRow = newData.findIndex(item => item.key === rowKey);
+  
+    while (newData.length < startRow + pastedData.length) {
+      const newRow: DataType = { 
+        key: Date.now().toString() + Math.random(), 
+        name: '', 
+        age: '', 
+        address: '', 
+        number: '' 
+      };
+      newData.push(newRow);
+    }
   
     pastedData.forEach((row, i) => {
       row.split('\t').forEach((cell, j) => {
         const rowIndex = startRow + i;
         const colIndex = startCol + j;
-        if (rowIndex < newData.length && colIndex < columns.length) {
+        if (colIndex < columns.length - 1) {
           const field = columns[colIndex].dataIndex as keyof DataType;
           if (field && typeof newData[rowIndex][field] === 'string') {
             newData[rowIndex][field] = cell.trim();
@@ -59,10 +89,20 @@ export default function EditableTableForm() {
       });
     });
   
-    setData(newData);
+    saveToHistory(newData);
     message.success('Veri başarıyla yapıştırıldı!');
   };
-  
+
+  const handleUndo = () => {
+    if (history.length > 0) {
+      const lastState = history[history.length - 1];
+      setData(lastState);
+      setHistory(prev => prev.slice(0, -1));
+      message.info('Son işlem geri alındı');
+    } else {
+      message.warning('Geri alınacak işlem kalmadı');
+    }
+  };
 
   const handleCellClick = (rowKey: string, columnIndex: number, e: React.MouseEvent) => {
     setSelectedCells(e.ctrlKey || e.metaKey ? [...selectedCells, { rowKey, columnIndex }] : [{ rowKey, columnIndex }]);
@@ -95,8 +135,11 @@ export default function EditableTableForm() {
       <Button onClick={handleAdd} type="primary" style={{ marginBottom: 16, marginRight: 8 }} icon={<PlusOutlined />}>
         Yeni Satır Ekle
       </Button>
-      <Button onClick={handleClear} type="default" style={{ marginBottom: 16 }}>
+      <Button onClick={handleClear} type="default" style={{ marginBottom: 16, marginRight: 8 }} icon={<DeleteOutlined />}>
         Tüm Verileri Temizle
+      </Button>
+      <Button onClick={handleUndo} type="default" style={{ marginBottom: 16 }} icon={<UndoOutlined />}>
+        Geri Al
       </Button>
       <Table bordered dataSource={data} columns={columns} pagination={false} />
     </div>
