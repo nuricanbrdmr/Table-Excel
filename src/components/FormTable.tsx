@@ -28,7 +28,7 @@ type PropertyTanim = {
     ],
   };
 
-export default function Component() {
+export default function FormTable() {
   const [form] = Form.useForm();
   const [data, setData] = useState<any[]>([]);
   const [gecmis, setGecmis] = useState<any[][]>([[]]);
