@@ -1,257 +1,399 @@
-import React, { useEffect, useState } from 'react';
-import { PlusOutlined, DeleteOutlined, UndoOutlined, RedoOutlined } from '@ant-design/icons';
-import { Button, Form, Input, Table, Typography, Checkbox, InputNumber, message } from 'antd';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
+import { Table } from "antd";
+import type { ColumnType } from "antd/es/table";
+import { TableRowSelection } from "antd/es/table/interface";
 
-type PropertyTanim = {
+interface DataTuru {
+  key: React.Key;
   isim: string;
-  tip: "metin" | "sayi" | "bit";
-};
+  yas: number;
+  cinsiyet: string;
+  dtarih: string;
+  adres: string;
+  aktif: boolean;
+  telefon: string;
+}
 
-type TipTanim = {
-  propertyTanimlar: PropertyTanim[];
-};
+const sutunlar: ColumnType<DataTuru>[] = [
+  { title: "İsim", dataIndex: "isim", key: "isim", width: "20%" },
+  { title: "Yaş", dataIndex: "yas", key: "yas", width: "5%" },
+  { title: "Cinsiyet", dataIndex: "cinsiyet", key: "cinsiyet", width: "10%" },
+  { title: "Doğum Tarihi", dataIndex: "dtarih", key: "dtarih", width: "10%" },
+  { title: "Adres", dataIndex: "adres", key: "adres", width: "25%" },
+  {
+    title: "Aktif",
+    dataIndex: "aktif",
+    key: "aktif",
+    width: "5%",
+    render: (value: boolean) => value.toString(),
+  },
+  { title: "Telefon", dataIndex: "telefon", key: "telefon", width: "20%" },
+];
 
-const formTipTanim: TipTanim = {
-  propertyTanimlar: [
-    { isim: "İsim", tip: "metin" },
-    { isim: "Yaş", tip: "sayi" },
-    { isim: "Adres", tip: "metin" },
-    { isim: "Aktif", tip: "bit" },
-  ],
-};
+const tumData: DataTuru[] = Array.from({ length: 50 }, (_, i) => ({
+  key: i,
+  isim: `Nuri Can Birdemir ${i + 1}`,
+  yas: 11 + i,
+  cinsiyet: i% 2 ? "Erkek":"Kadın",
+  dtarih: "16.06.2003",
+  adres: `Hadımköy, Baykar Özdemir Bayraktar Merkezi . ${i + 1}`,
+  aktif: i % 2 ? true : false,
+  telefon: `0512 345 789${(i + 1) % 10}`,
+}));
 
-const FormTable: React.FC = () => {
-  const [form] = Form.useForm();
-  const [data, setData] = useState<any[]>([]);
-  const [gecmis, setGecmis] = useState<any[][]>([[]]);
-  const [gecmisIndex, setGecmisIndex] = useState(0);
-  const [formDegerler, setFormDegerler] = useState<any>({});
+const TabloExcel: React.FC = () => {
+  const [state, setState] = useState({
+    secilenHucreler: new Set<string>(),
+    gecerliSayfa: 1,
+    sayfaBoyutu: 10,
+    seciliyorMu: false,
+    baslangicHucresi: { satir: 0, sutun: 0 },
+    ctrlBasiliMi: false,
+    shiftBasiliMi: false,
+    yukleniyor: false,
+    seciliSatirAnahtarlari: [] as React.Key[],
+    seciliSatirData: [] as DataTuru[],
+    aktifHucre: { satir: 0, sutun: 0 },
+    data: tumData,
+  });
 
-  const bosSatirOlustur = () => {
-    return formTipTanim.propertyTanimlar.reduce((tipler, ozellik) => {
-      tipler[ozellik.isim] = ozellik.tip === "sayi" ? 0 : ozellik.tip === "bit" ? false : "";
-      return tipler;
-    }, {} as Record<string, any>);
-  };
+  const tabloRef = useRef<HTMLDivElement>(null);
 
-  const tumSatirlariSil = () => {
-    setData([]);
-    setFormDegerler([]);
-  }
+  const stateGuncelle = useCallback((yeniState: Partial<typeof state>) => {
+    setState((prevState) => ({ ...prevState, ...yeniState }));
+  }, []);
 
-  const gecmisKaydet = (yeniData: any[]) => {
-    const yeniGecmis = gecmis.slice(0, gecmisIndex + 1);
-    yeniGecmis.push(yeniData);
-    setGecmis(yeniGecmis);
-    setGecmisIndex(yeniGecmis.length - 1);
-    setData(yeniData);
-    form.setFieldsValue({ items: yeniData });
-  };
-  
+  const kaynakData = useMemo(() => {
+    const baslangicIndex = (state.gecerliSayfa - 1) * state.sayfaBoyutu;
+    return state.data.slice(baslangicIndex, baslangicIndex + state.sayfaBoyutu);
+  }, [state.gecerliSayfa, state.sayfaBoyutu, state.data]);
+
   useEffect(() => {
     const tusDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key === 'z') {
-        event.preventDefault();
-        geriAl();
-      } else if (event.ctrlKey && event.key === 'y') {
-        event.preventDefault();
-        ileriAl();
-      }
+      if (event.ctrlKey) stateGuncelle({ ctrlBasiliMi: true });
+      if (event.shiftKey) stateGuncelle({ shiftBasiliMi: true });
+      if (event.ctrlKey && event.key === "c") kopyala();
+      okTusKullanimi(event);
+    };
+    const tusUp = (event: KeyboardEvent) => {
+      if (!event.ctrlKey) stateGuncelle({ ctrlBasiliMi: false });
+      if (!event.shiftKey) stateGuncelle({ shiftBasiliMi: false });
     };
 
-    window.addEventListener('keydown', tusDown);
-
+    window.addEventListener("keydown", tusDown);
+    window.addEventListener("keyup", tusUp);
     return () => {
-      window.removeEventListener('keydown', tusDown);
+      window.removeEventListener("keydown", tusDown);
+      window.removeEventListener("keyup", tusUp);
     };
-  }, [gecmisIndex, gecmis]);
+  }, [
+    state.secilenHucreler,
+    state.seciliSatirAnahtarlari,
+    state.aktifHucre,
+    state.data,
+  ]);
 
-  const geriAl = () => {
-    if (gecmisIndex > 0) {
-      setGecmisIndex(gecmisIndex - 1);
-      const oncekiData = gecmis[gecmisIndex - 1];
-      setData(oncekiData);
-      form.setFieldsValue({ items: oncekiData });
-    }
-  };
 
-  const ileriAl = () => {
-    if (gecmisIndex < gecmis.length - 1) {
-      setGecmisIndex(gecmisIndex + 1);
-      const sonrakiData = gecmis[gecmisIndex + 1];
-      setData(sonrakiData);
-      form.setFieldsValue({ items: sonrakiData });
-    }
-  };
+  const okTusKullanimi = (event: KeyboardEvent) => {
+    if (
+      ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)
+    ) {
+      event.preventDefault();
+      const { satir, sutun } = state.aktifHucre;
+      let yeniSatir = satir;
+      let yeniSutun = sutun;
 
-  const yapistir = (event: React.ClipboardEvent, bilgiAlanIsmi: string, bilgiAlanIndex: number) => {
-    event.preventDefault();
-    const panoData = event.clipboardData.getData('Text');
-    const satirlar = panoData.split('\n').filter(satir => satir.trim() !== '');
-    const ayristirilanSatirlar = satirlar.map(satir => satir.split('\t'));
-
-    const yeniData = [...data];
-    const sutunBaslangicIndex = formTipTanim.propertyTanimlar.findIndex(prop => prop.isim === bilgiAlanIsmi);
-
-    ayristirilanSatirlar.forEach((satir, satirIndex) => {
-      const dataIndex = bilgiAlanIndex + satirIndex;
-      if (!yeniData[dataIndex]) {
-        yeniData[dataIndex] = bosSatirOlustur();
+      switch (event.key) {
+        case "ArrowUp":
+          yeniSatir = Math.max(0, satir - 1);
+          break;
+        case "ArrowDown":
+          yeniSatir = Math.min(kaynakData.length - 1, satir + 1);
+          break;
+        case "ArrowLeft":
+          yeniSutun = Math.max(0, sutun - 1);
+          break;
+        case "ArrowRight":
+          yeniSutun = Math.min(sutunlar.length - 1, sutun + 1);
+          break;
       }
 
-      satir.forEach((hucre, hucreIndex) => {
-        const ozellikIndex = sutunBaslangicIndex + hucreIndex;
-        const ozellik = formTipTanim.propertyTanimlar[ozellikIndex];
-        if (ozellik) {
-          let deger: string | number | boolean = hucre.trim();
-          
-          if (ozellik.tip === "sayi") {
-            const sayiDeger = Number(deger);
-            deger = isNaN(sayiDeger) ? 0 : sayiDeger;
-          } else if (ozellik.tip === "bit") {
-            deger = deger.toLowerCase() === 'true' || deger === '1';
-          }
+      stateGuncelle({ aktifHucre: { satir: yeniSatir, sutun: yeniSutun } });
+      seciliHucreleriGuncelle(yeniSatir, yeniSutun, event.shiftKey);
+      hucreGoruntule(yeniSatir, yeniSutun);
+    }
+  };
 
-          yeniData[dataIndex][ozellik.isim] = deger;
+  const seciliHucreleriGuncelle = (
+    satir: number,
+    sutun: number,
+    shiftBasili: boolean
+  ) => {
+    if (!shiftBasili) {
+      const yeniSecilenHucreler = new Set([
+        `${kaynakData[satir].key}-${sutunlar[sutun].dataIndex}`,
+      ]);
+      stateGuncelle({
+        secilenHucreler: yeniSecilenHucreler,
+        baslangicHucresi: { satir, sutun },
+      });
+    } else if (state.baslangicHucresi) {
+      aralikSecimiYap(state.baslangicHucresi, { satir, sutun });
+    }
+  };
+
+  const hucreGoruntule = (satir: number, sutun: number) => {
+    if (tabloRef.current) {
+      const hucre = tabloRef.current.querySelector(
+        `[data-row-key="${kaynakData[satir].key}"] td:nth-child(${sutun + 2})`
+      );
+      if (hucre) {
+        hucre.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  };
+
+  const sayfalandirmaDegisikligi = useCallback(
+    (sayfa: number, boyut?: number) => {
+      stateGuncelle({
+        yukleniyor: true,
+        gecerliSayfa: sayfa,
+        sayfaBoyutu: boyut || state.sayfaBoyutu,
+      });
+      setTimeout(() => stateGuncelle({ yukleniyor: false }), 500);
+    },
+    [state.sayfaBoyutu]
+  );
+
+  const hucreMouseDown = (veri: DataTuru, sutunKey: keyof DataTuru) => {
+    const satirIndex = kaynakData.findIndex((item) => item.key === veri.key);
+    const sutunIndex = sutunlar.findIndex(
+      (sutun) => sutun.dataIndex === sutunKey
+    );
+
+    if (!state.ctrlBasiliMi && !state.shiftBasiliMi) {
+      stateGuncelle({ secilenHucreler: new Set() });
+    }
+
+    stateGuncelle({
+      seciliyorMu: true,
+      baslangicHucresi: { satir: satirIndex, sutun: sutunIndex },
+      aktifHucre: { satir: satirIndex, sutun: sutunIndex },
+    });
+
+    if (state.shiftBasiliMi) {
+      aralikSecimiYap(state.aktifHucre, {
+        satir: satirIndex,
+        sutun: sutunIndex,
+      });
+    } else {
+      hucreSeciminidegistir(veri, sutunKey);
+    }
+  };
+
+  const hucreMouseOver = (veri: DataTuru, sutunKey: keyof DataTuru) => {
+    if (state.seciliyorMu) {
+      const bitisSatir = kaynakData.findIndex((item) => item.key === veri.key);
+      const bitisSutun = sutunlar.findIndex(
+        (sutun) => sutun.dataIndex === sutunKey
+      );
+      aralikSecimiYap(state.baslangicHucresi, {
+        satir: bitisSatir,
+        sutun: bitisSutun,
+      });
+    }
+  };
+
+  const hucreMouseUp = () => {
+    stateGuncelle({ seciliyorMu: false });
+  };
+
+  const hucreSeciminidegistir = (veri: DataTuru, sutunKey: keyof DataTuru) => {
+    const hucreKey = `${veri.key}-${sutunKey}`;
+    setState((prevState) => {
+      const yeniSet = new Set(prevState.secilenHucreler);
+      yeniSet.has(hucreKey) ? yeniSet.delete(hucreKey) : yeniSet.add(hucreKey);
+      return {
+        ...prevState,
+        secilenHucreler: yeniSet,
+      };
+    });
+  };
+
+  const aralikSecimiYap = (
+    baslangic: { satir: number; sutun: number },
+    bitis: { satir: number; sutun: number }
+  ) => {
+    const minSatir = Math.min(baslangic.satir, bitis.satir);
+    const maxSatir = Math.max(baslangic.satir, bitis.satir);
+    const minSutun = Math.min(baslangic.sutun, bitis.sutun);
+    const maxSutun = Math.max(baslangic.sutun, bitis.sutun);
+
+    const yeniSecimler = new Set<string>();
+
+    for (let satir = minSatir; satir <= maxSatir; satir++) {
+      for (let sutun = minSutun; sutun <= maxSutun; sutun++) {
+        const veri = kaynakData[satir];
+        const sutunKey = sutunlar[sutun].dataIndex as keyof DataTuru;
+        const hucreKey = `${veri.key}-${sutunKey}`;
+        yeniSecimler.add(hucreKey);
+      }
+    }
+    stateGuncelle({ secilenHucreler: yeniSecimler });
+  };
+
+  const hucreSeciliMi = (veri: DataTuru, sutunKey: keyof DataTuru) => {
+    return state.secilenHucreler.has(`${veri.key}-${sutunKey}`);
+  };
+
+  const kopyala = () => {
+    const satirSutunGruplari: { [satir: number]: string[] } = {};
+    const sutunIndexListesi: number[] = [];
+
+    state.data.forEach((veri, satirIndex) => {
+      sutunlar.forEach((sutun, sutunIndex) => {
+        const sutunKey = sutun.dataIndex as keyof DataTuru;
+        const hucreDegeri = veri[sutunKey].toString();
+        const hucreKey = `${veri.key}-${sutunKey}`;
+        if (
+          state.secilenHucreler.has(hucreKey) ||
+          state.seciliSatirAnahtarlari.includes(veri.key)
+        ) {
+          if (!satirSutunGruplari[satirIndex]) {
+            satirSutunGruplari[satirIndex] = [];
+          }
+          satirSutunGruplari[satirIndex][sutunIndex] = hucreDegeri;
+          sutunIndexListesi.push(sutunIndex);
         }
       });
     });
+    const minKey = Math.min(
+      ...Object.values(sutunIndexListesi).map((key) => key)
+    );
 
-    gecmisKaydet(yeniData);
-    
-    const yeniFormDegerleri = { ...formDegerler, items: yeniData };
-    setFormDegerler(yeniFormDegerleri);
-    form.setFieldsValue(yeniFormDegerleri);
-    
-    message.success('Veri başarıyla yapıştırıldı');
-  };
+    let tabloMetni = "";
+    if (minKey === 0) {
+      tabloMetni = Object.values(satirSutunGruplari)
+        .map((satir) => satir.join("\t"))
+        .join("\n");
+    } else {
+      tabloMetni = Object.values(satirSutunGruplari)
+        .map((satir) => {
+          const satirKeys = Object.keys(satir).map(Number);
 
-  const bilgiAlanDegistir = (index: number, bilgiAlanIsmi: string, deger: any) => {
-    const yeniData = [...data];
-    if (!yeniData[index]) {
-      yeniData[index] = bosSatirOlustur();
+          return satirKeys
+            .map((key) => {
+              const adjustedKey = key - minKey;
+              const cell = satir[key];
+              const spaces = "\t".repeat(adjustedKey);
+              return spaces + cell;
+            })
+            .join("");
+        })
+        .join("\n");
     }
-    yeniData[index][bilgiAlanIsmi] = deger;
-    gecmisKaydet(yeniData);
-    const yeniFormDegerleri = { ...formDegerler, items: yeniData };
-    setFormDegerler(yeniFormDegerleri);
-    form.setFieldsValue(yeniFormDegerleri);
+
+    navigator.clipboard
+      .writeText(tabloMetni)
+      .then(() => {
+        stateGuncelle({ ctrlBasiliMi: false }); 
+        alert("Veriler kopyalandı!")
+      });
   };
 
-  const sutunlar = formTipTanim.propertyTanimlar.map((ozellik) => ({
-    title: ozellik.isim,
-    dataIndex: ozellik.isim,
-    key: ozellik.isim,
-    render: (deger: any, kayit: any, index: number) => (
-      <Form.Item
-        name={['items', index, ozellik.isim]}
-        style={{ margin: 0 }}
-        validateStatus={kayit[ozellik.isim] === undefined ? 'error' : ''}
-      >
-        {ozellik.tip === "metin" && (
-          <Input 
-            value={deger}
-            onChange={(e) => bilgiAlanDegistir(index, ozellik.isim, e.target.value)}
-            onPaste={(e) => yapistir(e, ozellik.isim, index)}
-            placeholder={`${ozellik.isim} girin`}
-          />
-        )}
-        {ozellik.tip === "sayi" && (
-          <InputNumber 
-            value={deger}
-            onChange={(yeniDeger) => bilgiAlanDegistir(index, ozellik.isim, yeniDeger)}
-            style={{ width: '100%' }} 
-            onPaste={(e) => yapistir(e, ozellik.isim, index)}
-            placeholder={`${ozellik.isim} girin`}
-          />
-        )}
-        {ozellik.tip === "bit" && (
-          <Checkbox
-            checked={deger}
-            onChange={(e) => bilgiAlanDegistir(index, ozellik.isim, e.target.checked)}
-          />
-        )}
-      </Form.Item>
-    ),
-  }));
+  const sutunBaslikTiklama = (sutunKey: keyof DataTuru) => {
+    const yeniSeciliHucreler = new Set(state.secilenHucreler);
+    const tumSecilenler = state.data.every((veri) =>
+      yeniSeciliHucreler.has(`${veri.key}-${sutunKey}`)
+    );
 
-  sutunlar.push({
-    title: 'İşlem',
-    dataIndex: 'islem',
-    key: 'action',
-    render: (_: any, __: any, index: number) => (
-      <DeleteOutlined
-        onClick={() => {
-          const yeniData = data.filter((_, i) => i !== index);
-          setFormDegerler(yeniData)
-          gecmisKaydet(yeniData);
-          message.success('Satır başarıyla silindi');
-        }}
-        style={{ color: 'red', cursor: 'pointer' }}
-      />
-    ),
-  });
+    state.data.forEach((veri) => {
+      const hucreKey = `${veri.key}-${sutunKey}`;
+      tumSecilenler
+        ? yeniSeciliHucreler.delete(hucreKey)
+        : yeniSeciliHucreler.add(hucreKey);
+    });
+    stateGuncelle({ secilenHucreler: yeniSeciliHucreler });
+  };
 
-  const onValuesChange = (_: any, allValues: any) => {
-    setFormDegerler(allValues);
+  const tabloSutunlari: ColumnType<DataTuru>[] = sutunlar.map(
+    (sutun, sutunIndex) => ({
+      ...sutun,
+      onHeaderCell: () => ({
+        onClick: () => sutunBaslikTiklama(sutun.dataIndex as keyof DataTuru),
+        style: {
+          cursor: "pointer",
+        },
+      }),
+      onCell: (veri: DataTuru, index?: number) => ({
+        onMouseDown: () =>
+          hucreMouseDown(veri, sutun.dataIndex as keyof DataTuru),
+        onMouseOver: () =>
+          hucreMouseOver(veri, sutun.dataIndex as keyof DataTuru),
+        onMouseUp: hucreMouseUp,
+        style: {
+          backgroundColor: hucreSeciliMi(
+            veri,
+            sutun.dataIndex as keyof DataTuru
+          )
+            ? "lightblue"
+            : undefined,
+          cursor: "pointer",
+          outline: "none",
+          border:
+            state.aktifHucre.satir === index &&
+            state.aktifHucre.sutun === sutunIndex
+              ? "1px solid #2d9594"
+              : undefined,
+        },
+      }),
+    })
+  );
+
+  const seciliSatirDegisikligi = (_: any, yeniSeciliSatirlar: DataTuru[]) => {
+    const guncelSeciliSatirlar = [
+      ...state.seciliSatirData.filter(
+        (satir) => !kaynakData.some((d) => d.key === satir.key)
+      ),
+      ...yeniSeciliSatirlar,
+    ];
+    stateGuncelle({
+      seciliSatirAnahtarlari: guncelSeciliSatirlar.map((satir) => satir.key),
+      seciliSatirData: guncelSeciliSatirlar,
+    });
+  };
+
+  const satirSecimi: TableRowSelection<DataTuru> = {
+    selectedRowKeys: state.seciliSatirAnahtarlari,
+    onChange: seciliSatirDegisikligi,
   };
 
   return (
-    <Form 
-      form={form} 
-      initialValues={{ items: [] }}
-      onValuesChange={onValuesChange}
-    >
-      <div style={{ marginBottom: 16 }}>
-        <Button
-          onClick={geriAl}
-          icon={<UndoOutlined />}
-          disabled={gecmisIndex <= 0}
-        >
-          Geri Al (Ctrl+Z)
-        </Button>
-        <Button
-          onClick={ileriAl}
-          icon={<RedoOutlined />}
-          disabled={gecmisIndex >= gecmis.length - 1}
-          style={{ marginLeft: 8 }}
-        >
-          İleri Al (Ctrl+Y)
-        </Button>
-        <Button
-          onClick={tumSatirlariSil}
-          disabled={data.length === 0 && true}
-          icon={<DeleteOutlined />}
-          style={{ marginLeft: 8 }}
-        >
-          Tüm Satırları Sil
-        </Button>
-      </div>
-      <Table
-        dataSource={data}
-        columns={sutunlar}
-        pagination={false}
-        rowKey={(_, index) => index?.toString() || ''}
+    <div ref={tabloRef} tabIndex={0}>
+      <Table<DataTuru>
+        title={() => <h2>Table Excel</h2>}
+        columns={tabloSutunlari}
+        rowSelection={satirSecimi}
+        dataSource={kaynakData}
+        bordered
+        loading={state.yukleniyor}
+        pagination={{
+          pageSize: state.sayfaBoyutu,
+          onChange: sayfalandirmaDegisikligi,
+          current: state.gecerliSayfa,
+          total: state.data.length,
+          showSizeChanger: true,
+        }}
+        style={{ userSelect: "none" }}
       />
-      <Form.Item style={{ marginTop: 16 }}>
-        <Button
-          type="dashed"
-          onClick={() => {
-            const yeniData = [...data, bosSatirOlustur()];
-            gecmisKaydet(yeniData);
-            message.success('Yeni satır eklendi');
-          }}
-          block
-          icon={<PlusOutlined />}
-        >
-          Yeni Satır Ekle
-        </Button>
-      </Form.Item>
-      <Typography.Paragraph>
-        <pre>{JSON.stringify(formDegerler, null, 2)}</pre>
-      </Typography.Paragraph>
-    </Form>
+    </div>
   );
 };
 
-export default FormTable;
+export default TabloExcel;

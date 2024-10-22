@@ -13,20 +13,24 @@ interface DataTuru {
   key: React.Key;
   isim: string;
   yas: number;
+  cinsiyet: string;
+  dtarih: string;
   adres: string;
   aktif: boolean;
   telefon: string;
 }
 
 const sutunlar: ColumnType<DataTuru>[] = [
-  { title: "İsim", dataIndex: "isim", key: "isim", width: "25%" },
-  { title: "Yaş", dataIndex: "yas", key: "yas", width: "10%" },
-  { title: "Adres", dataIndex: "adres", key: "adres", width: "30%" },
+  { title: "İsim", dataIndex: "isim", key: "isim", width: "20%" },
+  { title: "Yaş", dataIndex: "yas", key: "yas", width: "5%" },
+  { title: "Cinsiyet", dataIndex: "cinsiyet", key: "cinsiyet", width: "10%" },
+  { title: "Doğum Tarihi", dataIndex: "dtarih", key: "dtarih", width: "10%" },
+  { title: "Adres", dataIndex: "adres", key: "adres", width: "25%" },
   {
     title: "Aktif",
     dataIndex: "aktif",
     key: "aktif",
-    width: "10%",
+    width: "5%",
     render: (value: boolean) => value.toString(),
   },
   { title: "Telefon", dataIndex: "telefon", key: "telefon", width: "20%" },
@@ -36,6 +40,8 @@ const tumData: DataTuru[] = Array.from({ length: 50 }, (_, i) => ({
   key: i,
   isim: `Nuri Can Birdemir ${i + 1}`,
   yas: 11 + i,
+  cinsiyet: i% 2 ? "Erkek":"Kadın",
+  dtarih: "16.06.2003",
   adres: `Hadımköy, Baykar Özdemir Bayraktar Merkezi . ${i + 1}`,
   aktif: i % 2 ? true : false,
   telefon: `0512 345 789${(i + 1) % 10}`,
