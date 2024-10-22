@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { Input, Table } from "antd";
+import { Table } from "antd";
 import type { ColumnType } from "antd/es/table";
 import { TableRowSelection } from "antd/es/table/interface";
 
@@ -14,13 +14,21 @@ interface DataTuru {
   isim: string;
   yas: number;
   adres: string;
+  aktif: boolean;
   telefon: string;
 }
 
 const sutunlar: ColumnType<DataTuru>[] = [
   { title: "İsim", dataIndex: "isim", key: "isim", width: "25%" },
   { title: "Yaş", dataIndex: "yas", key: "yas", width: "10%" },
-  { title: "Adres", dataIndex: "adres", key: "adres", width: "40%" },
+  { title: "Adres", dataIndex: "adres", key: "adres", width: "30%" },
+  {
+    title: "Aktif",
+    dataIndex: "aktif",
+    key: "aktif",
+    width: "10%",
+    render: (value: boolean) => value.toString(),
+  },
   { title: "Telefon", dataIndex: "telefon", key: "telefon", width: "20%" },
 ];
 
@@ -29,51 +37,30 @@ const tumData: DataTuru[] = Array.from({ length: 50 }, (_, i) => ({
   isim: `Nuri Can Birdemir ${i + 1}`,
   yas: 11 + i,
   adres: `Hadımköy, Baykar Özdemir Bayraktar Merkezi . ${i + 1}`,
+  aktif: i % 2 ? true : false,
   telefon: `0512 345 789${(i + 1) % 10}`,
-})).sort(() => Math.random() - 0.5);
+}));
 
-const TabloExcel: React.FC<ColumnType> = () => {
+const TabloExcel: React.FC = () => {
   const [state, setState] = useState({
     secilenHucreler: new Set<string>(),
     gecerliSayfa: 1,
     sayfaBoyutu: 10,
     seciliyorMu: false,
-    baslangicHucresi: null as { satir: number; sutun: number } | null,
+    baslangicHucresi: { satir: 0, sutun: 0 },
+    ctrlBasiliMi: false,
     shiftBasiliMi: false,
     yukleniyor: false,
     seciliSatirAnahtarlari: [] as React.Key[],
     seciliSatirData: [] as DataTuru[],
     aktifHucre: { satir: 0, sutun: 0 },
-    duzenleModu: false,
-    duzenleDegeri: "",
     data: tumData,
-    gecmis: [] as { data: DataTuru[]; secilenHucreler: Set<string> }[],
-    gecmisIndex: -1,
   });
 
   const tabloRef = useRef<HTMLDivElement>(null);
 
   const stateGuncelle = useCallback((yeniState: Partial<typeof state>) => {
-    setState((prevState) => {
-      const yeniTamState = { ...prevState, ...yeniState };
-
-      if (yeniState.data || yeniState.secilenHucreler) {
-        const yeniGecmis = [
-          ...prevState.gecmis.slice(0, prevState.gecmisIndex + 1),
-          {
-            data: yeniTamState.data,
-            secilenHucreler: new Set(yeniTamState.secilenHucreler),
-          },
-        ];
-        return {
-          ...yeniTamState,
-          gecmis: yeniGecmis,
-          gecmisIndex: yeniGecmis.length - 1,
-        };
-      }
-
-      return yeniTamState;
-    });
+    setState((prevState) => ({ ...prevState, ...yeniState }));
   }, []);
 
   const kaynakData = useMemo(() => {
@@ -83,14 +70,14 @@ const TabloExcel: React.FC<ColumnType> = () => {
 
   useEffect(() => {
     const tusDown = (event: KeyboardEvent) => {
-      if (event.key === "Shift") stateGuncelle({ shiftBasiliMi: true });
+      if (event.ctrlKey) stateGuncelle({ ctrlBasiliMi: true });
+      if (event.shiftKey) stateGuncelle({ shiftBasiliMi: true });
       if (event.ctrlKey && event.key === "c") kopyala();
-      if (event.ctrlKey && event.key === "y") yapistir();
-      if (event.ctrlKey && event.key === "z") geriAl();
       okTusKullanimi(event);
     };
     const tusUp = (event: KeyboardEvent) => {
-      if (event.key === "Shift") stateGuncelle({ shiftBasiliMi: false });
+      if (!event.ctrlKey) stateGuncelle({ ctrlBasiliMi: false });
+      if (!event.shiftKey) stateGuncelle({ shiftBasiliMi: false });
     };
 
     window.addEventListener("keydown", tusDown);
@@ -105,6 +92,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
     state.aktifHucre,
     state.data,
   ]);
+
 
   const okTusKullanimi = (event: KeyboardEvent) => {
     if (
@@ -145,22 +133,13 @@ const TabloExcel: React.FC<ColumnType> = () => {
       const yeniSecilenHucreler = new Set([
         `${kaynakData[satir].key}-${sutunlar[sutun].dataIndex}`,
       ]);
-      stateGuncelle({ secilenHucreler: yeniSecilenHucreler });
-    } else {
-      aralikSecimiYap(state.baslangicHucresi || { satir, sutun }, {
-        satir,
-        sutun,
+      stateGuncelle({
+        secilenHucreler: yeniSecilenHucreler,
+        baslangicHucresi: { satir, sutun },
       });
+    } else if (state.baslangicHucresi) {
+      aralikSecimiYap(state.baslangicHucresi, { satir, sutun });
     }
-  };
-
-  const seciliSutunSayisi = (): number => {
-    const seciliSutunlar = new Set<string>();
-    state.secilenHucreler.forEach((hucreKey) => {
-      const [_, sutunKey] = hucreKey.split("-");
-      seciliSutunlar.add(sutunKey);
-    });
-    return seciliSutunlar.size;
   };
 
   const hucreGoruntule = (satir: number, sutun: number) => {
@@ -173,50 +152,6 @@ const TabloExcel: React.FC<ColumnType> = () => {
       }
     }
   };
-
-  useEffect(() => {
-    if (state.secilenHucreler.size > 0 || state.seciliSatirData.length > 0) {
-      localStorage.setItem(
-        "tabloVerileri",
-        JSON.stringify({
-          data: state.data,
-          secilenHucreler: Array.from(state.secilenHucreler),
-          seciliSatirlar: state.seciliSatirData,
-          gecerliSayfa: state.gecerliSayfa,
-          sayfaBoyutu: state.sayfaBoyutu,
-        })
-      );
-    }
-  }, [
-    state.data,
-    state.secilenHucreler,
-    state.seciliSatirData,
-    state.gecerliSayfa,
-    state.sayfaBoyutu,
-  ]);
-
-  useEffect(() => {
-    const kayitliVeriler = localStorage.getItem("tabloVerileri");
-    if (kayitliVeriler) {
-      const {
-        data,
-        secilenHucreler,
-        seciliSatirlar,
-        gecerliSayfa: kayitliSayfa,
-        sayfaBoyutu: kayitliBoyut,
-      } = JSON.parse(kayitliVeriler);
-      stateGuncelle({
-        data: data.sort(() => Math.random() - 0.5) || tumData,
-        secilenHucreler: new Set(secilenHucreler),
-        seciliSatirData: seciliSatirlar,
-        seciliSatirAnahtarlari: seciliSatirlar.map(
-          (item: DataTuru) => item.key
-        ),
-        gecerliSayfa: kayitliSayfa,
-        sayfaBoyutu: kayitliBoyut,
-      });
-    }
-  }, []);
 
   const sayfalandirmaDegisikligi = useCallback(
     (sayfa: number, boyut?: number) => {
@@ -231,27 +166,34 @@ const TabloExcel: React.FC<ColumnType> = () => {
   );
 
   const hucreMouseDown = (veri: DataTuru, sutunKey: keyof DataTuru) => {
-    if (!state.shiftBasiliMi) {
+    const satirIndex = kaynakData.findIndex((item) => item.key === veri.key);
+    const sutunIndex = sutunlar.findIndex(
+      (sutun) => sutun.dataIndex === sutunKey
+    );
+
+    if (!state.ctrlBasiliMi && !state.shiftBasiliMi) {
       stateGuncelle({ secilenHucreler: new Set() });
     }
+
     stateGuncelle({
       seciliyorMu: true,
-      baslangicHucresi: {
-        satir: state.data.findIndex((item) => item.key === veri.key),
-        sutun: sutunlar.findIndex((sutun) => sutun.dataIndex === sutunKey),
-      },
-      aktifHucre: {
-        satir: state.data.findIndex((item) => item.key === veri.key),
-        sutun: sutunlar.findIndex((sutun) => sutun.dataIndex === sutunKey),
-      },
+      baslangicHucresi: { satir: satirIndex, sutun: sutunIndex },
+      aktifHucre: { satir: satirIndex, sutun: sutunIndex },
     });
 
-    hucreSeciminidegistir(veri, sutunKey);
+    if (state.shiftBasiliMi) {
+      aralikSecimiYap(state.aktifHucre, {
+        satir: satirIndex,
+        sutun: sutunIndex,
+      });
+    } else {
+      hucreSeciminidegistir(veri, sutunKey);
+    }
   };
 
   const hucreMouseOver = (veri: DataTuru, sutunKey: keyof DataTuru) => {
-    if (state.seciliyorMu && state.baslangicHucresi) {
-      const bitisSatir = state.data.findIndex((item) => item.key === veri.key);
+    if (state.seciliyorMu) {
+      const bitisSatir = kaynakData.findIndex((item) => item.key === veri.key);
       const bitisSutun = sutunlar.findIndex(
         (sutun) => sutun.dataIndex === sutunKey
       );
@@ -263,7 +205,7 @@ const TabloExcel: React.FC<ColumnType> = () => {
   };
 
   const hucreMouseUp = () => {
-    stateGuncelle({ seciliyorMu: false, baslangicHucresi: null });
+    stateGuncelle({ seciliyorMu: false });
   };
 
   const hucreSeciminidegistir = (veri: DataTuru, sutunKey: keyof DataTuru) => {
@@ -287,12 +229,12 @@ const TabloExcel: React.FC<ColumnType> = () => {
     const minSutun = Math.min(baslangic.sutun, bitis.sutun);
     const maxSutun = Math.max(baslangic.sutun, bitis.sutun);
 
-    const yeniSecimler = new Set(state.secilenHucreler);
+    const yeniSecimler = new Set<string>();
 
     for (let satir = minSatir; satir <= maxSatir; satir++) {
       for (let sutun = minSutun; sutun <= maxSutun; sutun++) {
-        const veri = state.data[satir];
-        const sutunKey = sutunlar[sutun].dataIndex;
+        const veri = kaynakData[satir];
+        const sutunKey = sutunlar[sutun].dataIndex as keyof DataTuru;
         const hucreKey = `${veri.key}-${sutunKey}`;
         yeniSecimler.add(hucreKey);
       }
@@ -334,72 +276,30 @@ const TabloExcel: React.FC<ColumnType> = () => {
       tabloMetni = Object.values(satirSutunGruplari)
         .map((satir) => satir.join("\t"))
         .join("\n");
-    
     } else {
       tabloMetni = Object.values(satirSutunGruplari)
         .map((satir) => {
           const satirKeys = Object.keys(satir).map(Number);
-  
+
           return satirKeys
             .map((key) => {
               const adjustedKey = key - minKey;
               const cell = satir[key];
-              const spaces = "\t".repeat(adjustedKey);              
+              const spaces = "\t".repeat(adjustedKey);
               return spaces + cell;
             })
             .join("");
         })
         .join("\n");
     }
-    
-    
+
     navigator.clipboard
       .writeText(tabloMetni)
-      .then(() => alert("Veriler kopyalandı!"));
-  };
-
-  const yapistir = () => {
-    navigator.clipboard.readText().then((clipText) => {
-      const satirlar = clipText
-        .split("\n")
-        .filter((line) => line.trim() !== "");
-      let yeniData = [...state.data];
-      let guncelSatir = state.aktifHucre.satir;
-      let guncelSutun = state.aktifHucre.sutun;
-
-      const sutunSayisi = seciliSutunSayisi();
-      satirlar.forEach((satir) => {
-        const hucreler = satir.split("\t").slice(0, sutunSayisi);
-        hucreler.forEach((hucre, index) => {
-          if (
-            guncelSatir < yeniData.length &&
-            guncelSutun + index < sutunlar.length
-          ) {
-            const sutunKey = sutunlar[guncelSutun + index]
-              .dataIndex as keyof DataTuru;
-            yeniData[guncelSatir] = {
-              ...yeniData[guncelSatir],
-              [sutunKey]: hucre,
-            };
-          }
-        });
-        guncelSatir++;
+      .then(() => {
+        stateGuncelle({ ctrlBasiliMi: false }); 
+        alert("Veriler kopyalandı!")
       });
-
-      stateGuncelle({ data: yeniData });
-    });
   };
-
-  const geriAl = useCallback(() => {
-    if (state.gecmisIndex > 0) {
-      const oncekiDurum = state.gecmis[state.gecmisIndex - 1];
-      stateGuncelle({
-        data: oncekiDurum.data,
-        secilenHucreler: oncekiDurum.secilenHucreler,
-        gecmisIndex: state.gecmisIndex - 1,
-      });
-    }
-  }, [state.gecmisIndex, state.gecmis]);
 
   const sutunBaslikTiklama = (sutunKey: keyof DataTuru) => {
     const yeniSeciliHucreler = new Set(state.secilenHucreler);
@@ -414,32 +314,6 @@ const TabloExcel: React.FC<ColumnType> = () => {
         : yeniSeciliHucreler.add(hucreKey);
     });
     stateGuncelle({ secilenHucreler: yeniSeciliHucreler });
-  };
-
-  const hucreDuzenleModunaGec = (veri: DataTuru, sutunKey: keyof DataTuru) => {
-    stateGuncelle({
-      duzenleModu: true,
-      duzenleDegeri: veri[sutunKey].toString(),
-      aktifHucre: {
-        satir: state.data.findIndex((item) => item.key === veri.key),
-        sutun: sutunlar.findIndex((sutun) => sutun.dataIndex === sutunKey),
-      },
-    });
-  };
-
-  const hucreDuzenleKaydet = () => {
-    const { satir, sutun } = state.aktifHucre;
-    const sutunKey = sutunlar[sutun].dataIndex as keyof DataTuru;
-    const yeniData = [...state.data];
-    yeniData[satir] = {
-      ...yeniData[satir],
-      [sutunKey]: state.duzenleDegeri,
-    };
-    stateGuncelle({
-      data: yeniData,
-      duzenleModu: false,
-      duzenleDegeri: "",
-    });
   };
 
   const tabloSutunlari: ColumnType<DataTuru>[] = sutunlar.map(
@@ -457,8 +331,6 @@ const TabloExcel: React.FC<ColumnType> = () => {
         onMouseOver: () =>
           hucreMouseOver(veri, sutun.dataIndex as keyof DataTuru),
         onMouseUp: hucreMouseUp,
-        onDoubleClick: () =>
-          hucreDuzenleModunaGec(veri, sutun.dataIndex as keyof DataTuru),
         style: {
           backgroundColor: hucreSeciliMi(
             veri,
@@ -475,24 +347,6 @@ const TabloExcel: React.FC<ColumnType> = () => {
               : undefined,
         },
       }),
-      render: (metin: string, veri: DataTuru) => {
-        const duzenlendiMi =
-          state.duzenleModu &&
-          state.aktifHucre.satir ===
-            state.data.findIndex((item) => item.key === veri.key) &&
-          state.aktifHucre.sutun === sutunIndex;
-        return duzenlendiMi ? (
-          <Input
-            value={state.duzenleDegeri}
-            onChange={(e) => stateGuncelle({ duzenleDegeri: e.target.value })}
-            onPressEnter={hucreDuzenleKaydet}
-            onBlur={hucreDuzenleKaydet}
-            autoFocus
-          />
-        ) : (
-          metin
-        );
-      },
     })
   );
 
