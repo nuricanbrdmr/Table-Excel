@@ -146,28 +146,37 @@ const geriAl = () => {
     key: ozellik.isim,
     render: (deger: any, _: any, index: number) => (
       <Form.Item name={["items", index, ozellik.isim]} style={{ margin: 0 }}>
-        {ozellik.tip === "metin" && (
+        {ozellik.tip === "tarih" ? (
+          <div
+            onPaste={(e) => yapistir(e, ozellik.isim, index)}
+            style={{ width: "100%" }}
+            tabIndex={0} // Div'in fokuslanabilir olmasını sağlar
+          >
+            <DatePicker
+              value={deger ? dayjs(deger) : null}
+              style={{ width: "100%" }}
+              onChange={(tarih) => bilgiAlanDegistir(index, ozellik.isim, tarih)}
+            />
+          </div>
+        ) : ozellik.tip === "metin" ? (
           <Input
             value={deger}
             onChange={(e) => bilgiAlanDegistir(index, ozellik.isim, e.target.value)}
             onPaste={(e) => yapistir(e, ozellik.isim, index)}
           />
-        )}
-        {ozellik.tip === "sayi" && (
+        ) : ozellik.tip === "sayi" ? (
           <InputNumber
             value={deger}
             onChange={(newValue) => bilgiAlanDegistir(index, ozellik.isim, newValue)}
             style={{ width: "100%" }}
             onPaste={(e) => yapistir(e, ozellik.isim, index)}
           />
-        )}
-        {ozellik.tip === "bit" && (
+        ) : ozellik.tip === "bit" ? (
           <Checkbox
             checked={deger}
             onChange={(e) => bilgiAlanDegistir(index, ozellik.isim, e.target.checked)}
           />
-        )}
-        {ozellik.tip === "secim" && (
+        ) : ozellik.tip === "secim" ? (
           <Select
             value={deger}
             style={{ width: "100%" }}
@@ -179,14 +188,7 @@ const geriAl = () => {
               </Select.Option>
             ))}
           </Select>
-        )}
-        {ozellik.tip === "tarih" && (
-          <DatePicker
-            value={deger ? dayjs(deger) : null}
-            style={{ width: "100%" }}
-            onChange={(tarih) => bilgiAlanDegistir(index, ozellik.isim, tarih)}
-          />
-        )}
+        ) : null}
       </Form.Item>
     ),
   }));

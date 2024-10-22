@@ -17,23 +17,21 @@ interface DataTuru {
   dtarih: string;
   adres: string;
   aktif: boolean;
-  telefon: string;
 }
 
 const sutunlar: ColumnType<DataTuru>[] = [
   { title: "İsim", dataIndex: "isim", key: "isim", width: "20%" },
-  { title: "Yaş", dataIndex: "yas", key: "yas", width: "5%" },
-  { title: "Cinsiyet", dataIndex: "cinsiyet", key: "cinsiyet", width: "10%" },
-  { title: "Doğum Tarihi", dataIndex: "dtarih", key: "dtarih", width: "10%" },
+  { title: "Yaş", dataIndex: "yas", key: "yas", width: "10%" },
+  { title: "Cinsiyet", dataIndex: "cinsiyet", key: "cinsiyet", width: "15%" },
+  { title: "Doğum Tarihi", dataIndex: "dtarih", key: "dtarih", width: "15%" },
   { title: "Adres", dataIndex: "adres", key: "adres", width: "25%" },
   {
     title: "Aktif",
     dataIndex: "aktif",
     key: "aktif",
-    width: "5%",
+    width: "10%",
     render: (value: boolean) => value.toString(),
   },
-  { title: "Telefon", dataIndex: "telefon", key: "telefon", width: "20%" },
 ];
 
 const tumData: DataTuru[] = Array.from({ length: 50 }, (_, i) => ({
@@ -44,7 +42,6 @@ const tumData: DataTuru[] = Array.from({ length: 50 }, (_, i) => ({
   dtarih: "16.06.2003",
   adres: `Hadımköy, Baykar Özdemir Bayraktar Merkezi . ${i + 1}`,
   aktif: i % 2 ? true : false,
-  telefon: `0512 345 789${(i + 1) % 10}`,
 }));
 
 const TabloExcel: React.FC = () => {
