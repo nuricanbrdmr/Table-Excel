@@ -1,7 +1,6 @@
 import React, {
   useState,
   useEffect,
-  useMemo,
   useCallback,
   useRef,
 } from "react";
@@ -47,17 +46,17 @@ const tumData: DataTuru[] = Array.from({ length: 50 }, (_, i) => ({
 const TabloExcel: React.FC = () => {
   const [state, setState] = useState({
     secilenHucreler: new Set<string>(),
-    gecerliSayfa: 1,
-    sayfaBoyutu: 10,
     seciliyorMu: false,
     baslangicHucresi: { satir: 0, sutun: 0 },
     ctrlBasiliMi: false,
     shiftBasiliMi: false,
-    yukleniyor: false,
     seciliSatirAnahtarlari: [] as React.Key[],
     seciliSatirData: [] as DataTuru[],
     aktifHucre: { satir: 0, sutun: 0 },
-    data: tumData,
+    data: tumData.slice(0, 10),
+    yuklenenVeriSayisi: 10,
+    yukleniyor: false,
+    tumDataYuklendi: false
   });
 
   const tabloRef = useRef<HTMLDivElement>(null);
@@ -66,11 +65,37 @@ const TabloExcel: React.FC = () => {
     setState((prevState) => ({ ...prevState, ...yeniState }));
   }, []);
 
-  const kaynakData = useMemo(() => {
-    const baslangicIndex = (state.gecerliSayfa - 1) * state.sayfaBoyutu;
-    return state.data.slice(baslangicIndex, baslangicIndex + state.sayfaBoyutu);
-  }, [state.gecerliSayfa, state.sayfaBoyutu, state.data]);
+  // Scroll ile 10'arlı şekilde data yükleme
+  useEffect(() => {
+    const tabloContainer = tabloRef.current?.querySelector('.ant-table-body');
+    
+    const handleScroll = () => {
+      if (!tabloContainer || state.yukleniyor || state.tumDataYuklendi) return;
 
+      const { scrollTop, scrollHeight, clientHeight } = tabloContainer;
+      const scrollSonu = scrollHeight - scrollTop <= clientHeight + 20;
+
+      if (scrollSonu) {
+        setState(prev => ({ ...prev, yukleniyor: true }));
+        
+        setTimeout(() => {
+          const yeniSayi = state.yuklenenVeriSayisi + 10;
+          setState(prev => ({
+            ...prev,
+            data: tumData.slice(0, yeniSayi),
+            yuklenenVeriSayisi: yeniSayi,
+            yukleniyor: false,
+            tumDataYuklendi: yeniSayi >= tumData.length
+          }));
+        }, 500);
+      }
+    };
+
+    tabloContainer?.addEventListener('scroll', handleScroll);
+    return () => tabloContainer?.removeEventListener('scroll', handleScroll);
+  }, [state.yukleniyor, state.tumDataYuklendi, state.yuklenenVeriSayisi]);
+
+  // Key ve Mouse Event kontrolleri
   useEffect(() => {
     const tusDown = (event: KeyboardEvent) => {
       if (event.ctrlKey) stateGuncelle({ ctrlBasiliMi: true });
@@ -96,7 +121,6 @@ const TabloExcel: React.FC = () => {
     state.data,
   ]);
 
-
   const okTusKullanimi = (event: KeyboardEvent) => {
     if (
       ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)
@@ -111,7 +135,7 @@ const TabloExcel: React.FC = () => {
           yeniSatir = Math.max(0, satir - 1);
           break;
         case "ArrowDown":
-          yeniSatir = Math.min(kaynakData.length - 1, satir + 1);
+          yeniSatir = Math.min(state.data.length - 1, satir + 1);
           break;
         case "ArrowLeft":
           yeniSutun = Math.max(0, sutun - 1);
@@ -134,7 +158,7 @@ const TabloExcel: React.FC = () => {
   ) => {
     if (!shiftBasili) {
       const yeniSecilenHucreler = new Set([
-        `${kaynakData[satir].key}-${sutunlar[sutun].dataIndex}`,
+        `${state.data[satir].key}-${sutunlar[sutun].dataIndex}`,
       ]);
       stateGuncelle({
         secilenHucreler: yeniSecilenHucreler,
@@ -148,7 +172,7 @@ const TabloExcel: React.FC = () => {
   const hucreGoruntule = (satir: number, sutun: number) => {
     if (tabloRef.current) {
       const hucre = tabloRef.current.querySelector(
-        `[data-row-key="${kaynakData[satir].key}"] td:nth-child(${sutun + 2})`
+        `[data-row-key="${state.data[satir].key}"] td:nth-child(${sutun + 2})`
       );
       if (hucre) {
         hucre.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -156,20 +180,8 @@ const TabloExcel: React.FC = () => {
     }
   };
 
-  const sayfalandirmaDegisikligi = useCallback(
-    (sayfa: number, boyut?: number) => {
-      stateGuncelle({
-        yukleniyor: true,
-        gecerliSayfa: sayfa,
-        sayfaBoyutu: boyut || state.sayfaBoyutu,
-      });
-      setTimeout(() => stateGuncelle({ yukleniyor: false }), 500);
-    },
-    [state.sayfaBoyutu]
-  );
-
   const hucreMouseDown = (veri: DataTuru, sutunKey: keyof DataTuru) => {
-    const satirIndex = kaynakData.findIndex((item) => item.key === veri.key);
+    const satirIndex = state.data.findIndex((item) => item.key === veri.key);
     const sutunIndex = sutunlar.findIndex(
       (sutun) => sutun.dataIndex === sutunKey
     );
@@ -196,7 +208,7 @@ const TabloExcel: React.FC = () => {
 
   const hucreMouseOver = (veri: DataTuru, sutunKey: keyof DataTuru) => {
     if (state.seciliyorMu) {
-      const bitisSatir = kaynakData.findIndex((item) => item.key === veri.key);
+      const bitisSatir = state.data.findIndex((item) => item.key === veri.key);
       const bitisSutun = sutunlar.findIndex(
         (sutun) => sutun.dataIndex === sutunKey
       );
@@ -236,7 +248,7 @@ const TabloExcel: React.FC = () => {
 
     for (let satir = minSatir; satir <= maxSatir; satir++) {
       for (let sutun = minSutun; sutun <= maxSutun; sutun++) {
-        const veri = kaynakData[satir];
+        const veri = state.data[satir];
         const sutunKey = sutunlar[sutun].dataIndex as keyof DataTuru;
         const hucreKey = `${veri.key}-${sutunKey}`;
         yeniSecimler.add(hucreKey);
@@ -304,30 +316,9 @@ const TabloExcel: React.FC = () => {
       });
   };
 
-  const sutunBaslikTiklama = (sutunKey: keyof DataTuru) => {
-    const yeniSeciliHucreler = new Set(state.secilenHucreler);
-    const tumSecilenler = state.data.every((veri) =>
-      yeniSeciliHucreler.has(`${veri.key}-${sutunKey}`)
-    );
-
-    state.data.forEach((veri) => {
-      const hucreKey = `${veri.key}-${sutunKey}`;
-      tumSecilenler
-        ? yeniSeciliHucreler.delete(hucreKey)
-        : yeniSeciliHucreler.add(hucreKey);
-    });
-    stateGuncelle({ secilenHucreler: yeniSeciliHucreler });
-  };
-
   const tabloSutunlari: ColumnType<DataTuru>[] = sutunlar.map(
     (sutun, sutunIndex) => ({
       ...sutun,
-      onHeaderCell: () => ({
-        onClick: () => sutunBaslikTiklama(sutun.dataIndex as keyof DataTuru),
-        style: {
-          cursor: "pointer",
-        },
-      }),
       onCell: (veri: DataTuru, index?: number) => ({
         onMouseDown: () =>
           hucreMouseDown(veri, sutun.dataIndex as keyof DataTuru),
@@ -356,7 +347,7 @@ const TabloExcel: React.FC = () => {
   const seciliSatirDegisikligi = (_: any, yeniSeciliSatirlar: DataTuru[]) => {
     const guncelSeciliSatirlar = [
       ...state.seciliSatirData.filter(
-        (satir) => !kaynakData.some((d) => d.key === satir.key)
+        (satir) => !state.data.some((d) => d.key === satir.key)
       ),
       ...yeniSeciliSatirlar,
     ];
@@ -374,19 +365,13 @@ const TabloExcel: React.FC = () => {
   return (
     <div ref={tabloRef} tabIndex={0}>
       <Table<DataTuru>
-        title={() => <h2>Table Excel</h2>}
         columns={tabloSutunlari}
         rowSelection={satirSecimi}
-        dataSource={kaynakData}
+        dataSource={state.data}
         bordered
         loading={state.yukleniyor}
-        pagination={{
-          pageSize: state.sayfaBoyutu,
-          onChange: sayfalandirmaDegisikligi,
-          current: state.gecerliSayfa,
-          total: state.data.length,
-          showSizeChanger: true,
-        }}
+        pagination={false} 
+        scroll={{ y: 500 }} 
         style={{ userSelect: "none" }}
       />
     </div>
