@@ -184,25 +184,25 @@ const TabloExcel: React.FC = () => {
     }
   };
 
-  const aralikSecimiYap = (start: HucreKordinatlari, end: HucreKordinatlari) => {
-      const minRow = Math.min(start.satir, end.satir);
-      const maxRow = Math.max(start.satir, end.satir);
-      const minCol = Math.min(start.sutun, end.sutun);
-      const maxCol = Math.max(start.sutun, end.sutun);
+  const aralikSecimiYap = (baslangic: HucreKordinatlari, bitis: HucreKordinatlari) => {
+      const minSatir = Math.min(baslangic.satir, bitis.satir);
+      const maxSatir = Math.max(baslangic.satir, bitis.satir);
+      const minSutun = Math.min(baslangic.sutun, bitis.sutun);
+      const maxSutun = Math.max(baslangic.sutun, bitis.sutun);
   
-      const filteredSelection = secilenHucreler. filter(cell => 
-        !(cell.satir >= minRow && cell.satir <= maxRow && 
-          cell.sutun >= minCol && cell.sutun <= maxCol)
+      const filtrelenmisSecim = secilenHucreler. filter(hucre => 
+        !(hucre.satir >= minSatir && hucre.satir <= maxSatir && 
+          hucre.sutun >= minSutun && hucre.sutun <= maxSutun)
       );
   
-      const newSelection: HucreKordinatlari[] = [];
-      for (let satir = minRow; satir <= maxRow; satir++) {
-        for (let sutun = minCol; sutun <= maxCol; sutun++) {
-          newSelection.push({ satir, sutun });
+      const yeniSecim: HucreKordinatlari[] = [];
+      for (let satir = minSatir; satir <= maxSatir; satir++) {
+        for (let sutun = minSutun; sutun <= maxSutun; sutun++) {
+          yeniSecim.push({ satir, sutun });
         }
       }
   
-      setSecilenHucreler([...filteredSelection, ...newSelection]);
+      tuslar.ctrl ? setSecilenHucreler([...filtrelenmisSecim, ...yeniSecim]) : setSecilenHucreler(yeniSecim);;
   };
 
   const kopyala = () => {
