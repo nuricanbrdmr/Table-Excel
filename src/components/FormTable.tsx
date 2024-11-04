@@ -212,8 +212,8 @@ const geriAl = () => {
 
   return (
     <Form form={form} initialValues={{ items: [] }}>
-      <div style={{ marginBottom: 16 }}>
-        <Button onClick={geriAl} icon={<UndoOutlined />} disabled={gecmisIndex <= 0}>
+      <div style={{ marginBottom: 16, marginTop: 16 }}>
+      <Button onClick={geriAl} icon={<UndoOutlined />} disabled={gecmisIndex <= 0}>
           Geri Al (Ctrl+Z)
         </Button>
         <Button onClick={ileriAl} icon={<RedoOutlined />} disabled={gecmisIndex >= history.length - 1} style={{ marginLeft: 8 }}>
