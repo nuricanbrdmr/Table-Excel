@@ -48,13 +48,13 @@ const TabloExcel: React.FC = () => {
   const [aktifHucre, setAktifHucre] = useState<HucreKordinatlari>({ satir: 0, sutun: 0 });
   const [baslangicHucresi, setBaslangicHucresi] = useState<HucreKordinatlari>({ satir: 0, sutun: 0 });
   const [seciliyorMu, setSeciliyorMu] = useState(false);
+  const [yukleniyor, setYukleniyor] = useState(false);
   const [seciliSatirlar, setSeciliSatirlar] = useState<DataTuru[]>([]);
   const [tableData, setTableData] = useState<DataTuru[]>(tumData.slice(0, 10));
   const [yuklenenVeriSayisi, setYuklenenVeriSayisi] = useState(10);
 
   const tuslar = useRef({ ctrl: false, shift: false }).current;
   let tumDataYuklendi = useRef<boolean>(false).current;
-  let yukleniyor = useRef<boolean>(false).current;
 
   // Scroll ile 10'arlı şekilde data yükleme
   useEffect(() => {
@@ -68,13 +68,13 @@ const TabloExcel: React.FC = () => {
       const isAtBottom = scrollHeight - scrollTop <= clientHeight + 20;
   
       if (isAtBottom) {
-        yukleniyor = true;
+        setYukleniyor(true)
         
         setTimeout(() => {
           const newCount = yuklenenVeriSayisi + 10;
           setTableData(tumData.slice(0, newCount));
           setYuklenenVeriSayisi(newCount);
-          yukleniyor = false;
+          setYukleniyor(false)
           tumDataYuklendi = newCount >= tumData.length; 
         }, 500);
       }
@@ -131,7 +131,7 @@ const TabloExcel: React.FC = () => {
       const yeniAktifHucre = { satir: yeniSatir, sutun: yeniSutun };
       setAktifHucre(yeniAktifHucre);
 
-      if (tuslar.shift) {
+      if (tuslar.ctrl) {
         aralikSecimiYap(baslangicHucresi, yeniAktifHucre);
       } else {
         setBaslangicHucresi(yeniAktifHucre);
