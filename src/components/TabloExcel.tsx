@@ -64,30 +64,11 @@ const TabloExcel: React.FC = () => {
 
   const tuslar = useRef({ ctrl: false, shift: false }).current;
   const tumDataYuklendi = useRef<boolean>(false);
+  const tableRef = useRef<HTMLDivElement>(null);
 
-  const gorunurlukDegisikligi = (gorunurMu: boolean) => {
-    if (gorunurMu && !yukleniyor && !tumDataYuklendi.current) {
-      setYukleniyor(true);
-      setTimeout(() => {
-        const yeniSatir = yuklenenVeriSayisi + 10;
-        const yeniDatalar = tumData
-          .slice(yuklenenVeriSayisi, yeniSatir)
-          .map((satir) => ({
-            ...satir,
-            key: `${satir.key}`,
-          }));
-
-        setTableData((oncekiData) => [...oncekiData, ...yeniDatalar]);
-        setYuklenenVeriSayisi(yeniSatir);
-        setYukleniyor(false);
-        tumDataYuklendi.current = yeniSatir >= tumData.length;
-      }, 500);
-    }
-  };
-
-  // Key ve Mouse Event kontrolleri
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      event.stopPropagation();
       if (event.ctrlKey) tuslar.ctrl = true;
       if (event.shiftKey) tuslar.shift = true;
       if (event.ctrlKey && event.key === "c") kopyala();
@@ -95,6 +76,7 @@ const TabloExcel: React.FC = () => {
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
+      event.stopPropagation();
       if (!event.ctrlKey) tuslar.ctrl = false;
       if (!event.shiftKey) tuslar.shift = false;
     };
@@ -146,7 +128,7 @@ const TabloExcel: React.FC = () => {
   };
 
   const hucreyeKaydir = (satir: number, sutun: number) => {
-    const tableBody = document.querySelector(".ant-table-body");
+    const tableBody = tableRef.current!.querySelector(".ant-table-body");
     if (!tableBody) return;
 
     const rowElement = tableBody.querySelector(`tr:nth-child(${satir + 2})`);
@@ -312,8 +294,28 @@ const TabloExcel: React.FC = () => {
     }),
   }));
 
+  const gorunurlukDegisikligi = (gorunurMu: boolean) => {
+    if (gorunurMu && !yukleniyor && !tumDataYuklendi.current) {
+      setYukleniyor(true);
+      setTimeout(() => {
+        const yeniSatir = yuklenenVeriSayisi + 10;
+        const yeniDatalar = tumData
+          .slice(yuklenenVeriSayisi, yeniSatir)
+          .map((satir) => ({
+            ...satir,
+            key: `${satir.key}`,
+          }));
+
+        setTableData((oncekiData) => [...oncekiData, ...yeniDatalar]);
+        setYuklenenVeriSayisi(yeniSatir);
+        setYukleniyor(false);
+        tumDataYuklendi.current = yeniSatir >= tumData.length;
+      }, 500);
+    }
+  };
+
   return (
-    <div tabIndex={0} style={{ marginBottom: 0 }}>
+    <div ref={tableRef} tabIndex={0}>
       <Table<DataTuru>
         columns={tabloSutunlari}
         rowSelection={satirSecimi}
