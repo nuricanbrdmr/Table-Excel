@@ -1,7 +1,7 @@
 
 # Tablo Excel Projesi
 
-Bu proje, Ant Design kütüphanesini kullanarak bir tablo oluşturur. Kullanıcılar, tablodaki hücreleri seçebilir, sayfalama özelliklerinden yararlanabilir ve seçili verileri yerel depolama (localStorage) ile kaydedebilir. Proje, kullanıcıların büyük veri setleriyle etkileşimde bulunmasını kolaylaştırmak için geliştirilmiştir.
+Bu proje, Ant Design kütüphanesini kullanarak bir tablo oluşturur. Kullanıcılar, tablodaki hücreleri seçebilir, sonsuz kaydırma (infinite scroll) özelliğinden yararlanabilir. Proje, kullanıcıların büyük veri setleriyle etkileşimde bulunmasını kolaylaştırmak için geliştirilmiştir.
 
 ## Özellikler
 
