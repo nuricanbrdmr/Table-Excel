@@ -67,6 +67,9 @@ const TabloExcel: React.FC = () => {
   const tableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const tableElement = tableRef.current;
+    if (!tableElement) return;
+
     const handleKeyDown = (event: KeyboardEvent) => {
       event.stopPropagation();
       if (event.ctrlKey) tuslar.ctrl = true;
@@ -81,11 +84,12 @@ const TabloExcel: React.FC = () => {
       if (!event.shiftKey) tuslar.shift = false;
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
+    tableElement.addEventListener("keydown", handleKeyDown);
+    tableElement.addEventListener("keyup", handleKeyUp);
+
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
+      tableElement.removeEventListener("keydown", handleKeyDown);
+      tableElement.removeEventListener("keyup", handleKeyUp);
     };
   }, [secilenHucreler, seciliSatirlar, aktifHucre]);
 
@@ -179,6 +183,9 @@ const TabloExcel: React.FC = () => {
       setBaslangicHucresi(yeniKoordinat);
       setAktifHucre(yeniKoordinat);
     }
+
+    // Tabloyu focus et
+    tableRef.current?.focus();
   };
 
   const hucreMouseOver = (satirIndis: number, sutunIndis: number) => {
@@ -274,7 +281,12 @@ const TabloExcel: React.FC = () => {
   const tabloSutunlari = sutunlar.map((sutun, sutunIndis) => ({
     ...sutun,
     onCell: (veri: DataTuru, satirIndis?: number) => ({
-      onMouseDown: () => hucreMouseDown(satirIndis!, sutunIndis),
+      onMouseDown: () => {
+        hucreMouseDown(satirIndis!, sutunIndis);
+        setTimeout(() => {
+          tableRef?.current?.focus(); // tableRef'e focus
+        }, 0);
+      },
       onMouseOver: () => hucreMouseOver(satirIndis!, sutunIndis),
       onMouseUp: () => setSeciliyorMu(false),
       style: {
@@ -285,7 +297,6 @@ const TabloExcel: React.FC = () => {
           ? "lightblue"
           : undefined,
         cursor: "pointer",
-        outline: "none",
         border:
           aktifHucre.satir === satirIndis && aktifHucre.sutun === sutunIndis
             ? "1px solid #2d9594"
@@ -293,6 +304,7 @@ const TabloExcel: React.FC = () => {
       },
     }),
   }));
+
 
   const gorunurlukDegisikligi = (gorunurMu: boolean) => {
     if (gorunurMu && !yukleniyor && !tumDataYuklendi.current) {
@@ -315,7 +327,10 @@ const TabloExcel: React.FC = () => {
   };
 
   return (
-    <div ref={tableRef} tabIndex={0}>
+    <div ref={tableRef}
+      tabIndex={0}
+      onClick={() => tableRef.current?.focus()}
+    >
       <Table<DataTuru>
         columns={tabloSutunlari}
         rowSelection={satirSecimi}
@@ -325,6 +340,11 @@ const TabloExcel: React.FC = () => {
         pagination={false}
         scroll={{ y: 450 }}
         style={{ userSelect: "none" }}
+        onRow={() => ({
+          onClick: () => {
+            tableRef.current?.focus();
+          }
+        })}
         components={{
           body: {
             wrapper: ({ children }: { children: React.ReactNode }) => (
