@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { Table } from "antd";
 import type { ColumnType } from "antd/es/table";
 import { TableRowSelection } from "antd/es/table/interface";
-import VisibilitySensor from "react-visibility-sensor";
 
 interface DataTuru {
   key: React.Key;
@@ -45,9 +44,7 @@ const tumData: DataTuru[] = Array.from({ length: 50 }, (_, i) => ({
 }));
 
 const TabloExcel: React.FC = () => {
-  const [secilenHucreler, setSecilenHucreler] = useState<HucreKordinatlari[]>(
-    []
-  );
+  const [secilenHucreler, setSecilenHucreler] = useState<HucreKordinatlari[]>([]);
   const [aktifHucre, setAktifHucre] = useState<HucreKordinatlari>({
     satir: 0,
     sutun: 0,
@@ -61,9 +58,9 @@ const TabloExcel: React.FC = () => {
   const [seciliSatirlar, setSeciliSatirlar] = useState<DataTuru[]>([]);
   const [tableData, setTableData] = useState<DataTuru[]>(tumData.slice(0, 10));
   const [yuklenenVeriSayisi, setYuklenenVeriSayisi] = useState(10);
+  const [tumDataYuklendi, setTumDataYuklendi] = useState(false);
 
   const tuslar = useRef({ ctrl: false, shift: false }).current;
-  const tumDataYuklendi = useRef<boolean>(false);
   const tableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -305,34 +302,49 @@ const TabloExcel: React.FC = () => {
     }),
   }));
 
-
-  const gorunurlukDegisikligi = (gorunurMu: boolean) => {
-    if (gorunurMu && !yukleniyor && !tumDataYuklendi.current) {
-      setYukleniyor(true);
-      setTimeout(() => {
-        const yeniSatir = yuklenenVeriSayisi + 10;
-        const yeniDatalar = tumData
-          .slice(yuklenenVeriSayisi, yeniSatir)
-          .map((satir) => ({
-            ...satir,
-            key: `${satir.key}`,
-          }));
-
-        setTableData((oncekiData) => [...oncekiData, ...yeniDatalar]);
-        setYuklenenVeriSayisi(yeniSatir);
-        setYukleniyor(false);
-        tumDataYuklendi.current = yeniSatir >= tumData.length;
-      }, 500);
+  const ScrollKaydir = (event: React.UIEvent<HTMLDivElement>) => {
+    const { target } = event;
+    const tabloDataElementi = target as HTMLDivElement;
+    if (
+      // scrollHeight: İçeriğin toplam yüksekliği (yukarıdan aşağıya doğru tüm içeriği kapsar)
+      // scrollTop: Kullanıcı tarafından kaydırılan miktar (yukarıdan itibaren ne kadar kaydırıldığı)
+      // clientHeight: Görünür alanın yüksekliği (yani, görünür olan kısmın yüksekliği)
+      // Bu hesaplama, kullanıcıyı tablonun en altına 10px mesafede olup olmadığını kontrol eder.
+      // Eğer fark 10px'den küçükse, yani kullanıcı tablonun sonuna yakınsa, yeni veri yükleme işlemi tetiklenir.
+      tabloDataElementi.scrollHeight - tabloDataElementi.scrollTop - tabloDataElementi.clientHeight < 10 &&
+      !yukleniyor &&
+      !tumDataYuklendi
+    ) {
+      DahaFazlaDataYukle();
     }
   };
 
+  const DahaFazlaDataYukle = () => {
+    setYukleniyor(true);
+    setTimeout(() => {
+      const yeniVeriSayisi = yuklenenVeriSayisi + 10;
+      const yeniData = tumData.slice(0, yeniVeriSayisi);
+
+      setTableData(yeniData);
+      setYuklenenVeriSayisi(yeniVeriSayisi);
+
+      if (yeniVeriSayisi >= tumData.length) {
+        setTumDataYuklendi(true);
+      }
+
+      setYukleniyor(false);
+    }, 1000);
+  };
+
   return (
-    <div ref={tableRef}
+    <div
+      ref={tableRef}
       tabIndex={0}
       onClick={() => tableRef.current?.focus()}
     >
       <Table<DataTuru>
         columns={tabloSutunlari}
+        onScroll={ScrollKaydir}
         rowSelection={satirSecimi}
         dataSource={tableData}
         bordered
@@ -345,21 +357,6 @@ const TabloExcel: React.FC = () => {
             tableRef.current?.focus();
           }
         })}
-        components={{
-          body: {
-            wrapper: ({ children }: { children: React.ReactNode }) => (
-              <>
-                {children}
-                <VisibilitySensor
-                  onChange={gorunurlukDegisikligi}
-                  offset={{ bottom: 300 }}
-                >
-                  <tr style={{ height: 1 }} />
-                </VisibilitySensor>
-              </>
-            ),
-          },
-        }}
       />
     </div>
   );
